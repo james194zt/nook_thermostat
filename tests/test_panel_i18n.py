@@ -9,14 +9,14 @@ import json
 import re
 from pathlib import Path
 
-WWW = Path(__file__).resolve().parent.parent / "custom_components" / "neat_thermostat" / "www"
-JS = (WWW / "neat-thermostat-panel.js").read_text(encoding="utf-8")
+WWW = Path(__file__).resolve().parent.parent / "custom_components" / "nook" / "www"
+JS = (WWW / "nook-panel.js").read_text(encoding="utf-8")
 EN = json.loads((WWW / "i18n" / "en.json").read_text(encoding="utf-8"))
 KEY = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
 
 # Text that isn't a label: brand/product names, units, CSS/HTML bits, ids, HA terms.
 ALLOWED_TEXT = {
-    "Neat Thermostat",  # HA's device-name prefix stripped from entity names (_entityName)
+    "Nook",  # HA's device-name prefix stripped from entity names (_entityName)
     "notify.",  # start of an HA service id: <code>notify.mobile_app_…</code>
     "hallway",  # example device ID in the wall panel dialog's placeholder
 }

@@ -4,8 +4,8 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.const import DEFAULT_WALL_PANEL_MODEL  # noqa: E402
-from custom_components.neat_thermostat.models import WallPanelConfig  # noqa: E402
+from custom_components.nook.const import DEFAULT_WALL_PANEL_MODEL  # noqa: E402
+from custom_components.nook.models import WallPanelConfig  # noqa: E402
 
 
 def test_panel_saved_before_models_gets_default():

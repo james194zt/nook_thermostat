@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.intelligence import (  # noqa: E402
+from custom_components.nook.intelligence import (  # noqa: E402
     DEFAULT_COAST_C,
     CoastWatch,
     IntelligenceState,

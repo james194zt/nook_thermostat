@@ -223,7 +223,7 @@ async function ensureUnlocked(action) {
 async function submitPin() {
   if (!client?.request || pinBuffer.length !== 4) return;
   try {
-    const result = await client.request("neat_thermostat/verify_wall_pin", {
+    const result = await client.request("nook/verify_wall_pin", {
       pin: pinBuffer,
       panel_id: config.deviceId,
     });
@@ -447,7 +447,7 @@ async function showDevicePicker() {
 
   let devices = [];
   try {
-    const result = await client?.request?.("neat_thermostat/list_wall_panels");
+    const result = await client?.request?.("nook/list_wall_panels");
     devices = (result?.wall_panels || []).map((p) => ({
       id: p.id,
       label: p.label || p.id,
@@ -475,7 +475,7 @@ async function showDevicePicker() {
 
   if (!devices.length) {
     ui.devicePickList.innerHTML =
-      `<p style="margin:0;color:rgba(255,255,255,0.65);font-size:14px;line-height:1.4">No wall panels in Neat yet. Add them in Home Assistant → Neat Thermostat → Wall panels, or open setup.html.</p>`;
+      `<p style="margin:0;color:rgba(255,255,255,0.65);font-size:14px;line-height:1.4">No wall panels in Nook yet. Add them in Home Assistant → Nook → Wall panels, or open setup.html.</p>`;
   }
 }
 

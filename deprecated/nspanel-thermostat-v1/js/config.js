@@ -23,7 +23,7 @@ export const DEFAULT_CONFIG = {
   haUrl: DEFAULT_HA_URL,
   accessToken: "",
   primary: {
-    entity: "climate.neat_home",
+    entity: "climate.nook_home",
     name: "Heating",
     step: 0.5,
   },
@@ -159,10 +159,10 @@ export async function loadRegistry(hassClient = null) {
   return normalizeRegistry(await resolveRegistry(hassClient));
 }
 
-async function loadFromNeat(hassClient, deviceId) {
+async function loadFromNook(hassClient, deviceId) {
   if (!hassClient?.request || !deviceId) return null;
   try {
-    const result = await hassClient.request("neat_thermostat/get_wall_panel_config", {
+    const result = await hassClient.request("nook/get_wall_panel_config", {
       panel_id: deviceId,
     });
     return result?.config || null;
@@ -181,15 +181,15 @@ export async function loadConfig(hassClient = null) {
     deviceId,
   };
 
-  // Prefer central Neat wall-panel config (source of truth).
-  const fromNeat = await loadFromNeat(hassClient, deviceId);
-  if (fromNeat) {
+  // Prefer central Nook wall-panel config (source of truth).
+  const fromNook = await loadFromNook(hassClient, deviceId);
+  if (fromNook) {
     return sanitizeConfig(
-      mergeConfig(DEFAULT_CONFIG, mergeConfig(fromNeat, localOverrides))
+      mergeConfig(DEFAULT_CONFIG, mergeConfig(fromNook, localOverrides))
     );
   }
 
-  // Fallback: legacy devices.json / HA user-data registry (pre-Neat).
+  // Fallback: legacy devices.json / HA user-data registry (pre-Nook).
   const registry = await resolveRegistry(hassClient);
   let bundled = {};
   try {

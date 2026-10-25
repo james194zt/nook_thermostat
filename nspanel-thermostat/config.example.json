@@ -2,7 +2,7 @@
   "haUrl": "http://192.168.1.10:8123",
   "accessToken": "",
   "primary": {
-    "entity": "climate.neat_home",
+    "entity": "climate.nook_home",
     "name": "Heating",
     "step": 0.5
   },

@@ -10,8 +10,8 @@ from homeassistant.helpers import entity_registry as er  # noqa: E402
 from homeassistant.setup import async_setup_component  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.const import DOMAIN  # noqa: E402
-from custom_components.neat_thermostat.websocket_api import async_register_ws_handlers  # noqa: E402
+from custom_components.nook.const import DOMAIN  # noqa: E402
+from custom_components.nook.websocket_api import async_register_ws_handlers  # noqa: E402
 from tests.test_schedule_ha import setup  # noqa: E402,F401
 
 CONFIG = EntityCategory.CONFIG
@@ -112,18 +112,18 @@ async def test_websocket_commands(hass, setup, hass_ws_client):
     async_register_ws_handlers(hass)
     ws = await hass_ws_client(hass)
 
-    await ws.send_json({"id": 1, "type": "neat_thermostat/get_wall_room_settings", "room_id": "lounge"})
+    await ws.send_json({"id": 1, "type": "nook/get_wall_room_settings", "room_id": "lounge"})
     msg = await ws.receive_json()
     assert msg["success"] and len(msg["result"]["settings"]) == 3
 
-    await ws.send_json({"id": 2, "type": "neat_thermostat/update_wall_room", "room_id": "lounge", "house_offset": -1.5})
+    await ws.send_json({"id": 2, "type": "nook/update_wall_room", "room_id": "lounge", "house_offset": -1.5})
     msg = await ws.receive_json()
     assert msg["success"] and msg["result"]["room"]["house_offset"] == -1.5
     assert coord.config.rooms[0].house_offset == -1.5
 
     # Out of range / unknown choices never reach the config.
     for i, bad in enumerate(({"house_offset": 9}, {"eco_temp": 2}, {"hold_ends": "forever"}), start=3):
-        await ws.send_json({"id": i, "type": "neat_thermostat/update_wall_room", "room_id": "lounge", **bad})
+        await ws.send_json({"id": i, "type": "nook/update_wall_room", "room_id": "lounge", **bad})
         assert not (await ws.receive_json())["success"]
-    await ws.send_json({"id": 9, "type": "neat_thermostat/get_wall_room_settings", "room_id": "nope"})
+    await ws.send_json({"id": 9, "type": "nook/get_wall_room_settings", "room_id": "nope"})
     assert (await ws.receive_json())["error"]["code"] == "not_found"

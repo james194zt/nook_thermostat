@@ -29,15 +29,15 @@ export class DisplayPower {
   // fully.bind() takes code to eval, so it calls a global that points at the
   // current instance; bind only once per page load.
   bindFullyMotion() {
-    window.__neatWake = () => this.resetTimer();
-    if (window.__neatFullyBound || typeof window.fully?.bind !== "function") return;
+    window.__nookWake = () => this.resetTimer();
+    if (window.__nookFullyBound || typeof window.fully?.bind !== "function") return;
     try {
-      window.fully.bind("onMotion", "window.__neatWake && window.__neatWake();");
+      window.fully.bind("onMotion", "window.__nookWake && window.__nookWake();");
       window.fully.bind(
         "screenOn",
-        "window.__neatWake && window.__neatWake(); window.__neatScreenOn && window.__neatScreenOn();",
+        "window.__nookWake && window.__nookWake(); window.__nookScreenOn && window.__nookScreenOn();",
       );
-      window.__neatFullyBound = true;
+      window.__nookFullyBound = true;
     } catch {
       // Not Fully, or JS interface disabled.
     }
@@ -85,6 +85,6 @@ export class DisplayPower {
 
   destroy() {
     clearTimeout(this.timer);
-    window.__neatWake = null;
+    window.__nookWake = null;
   }
 }

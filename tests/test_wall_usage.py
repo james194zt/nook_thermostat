@@ -6,7 +6,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.intelligence import (  # noqa: E402
+from custom_components.nook.intelligence import (  # noqa: E402
     EnergyHistoryState,
     wall_usage_payload,
 )
@@ -109,7 +109,7 @@ def _check_hourly(out, per_hour):
 
 
 async def test_energy_meter_in_wh_shown_in_kwh(recorder_mock, hass):
-    from custom_components.neat_thermostat.energy_meter import async_energy_usage
+    from custom_components.nook.energy_meter import async_energy_usage
 
     hours_today = await _import_meter(hass, "sensor.gas_import", "energy", "Wh", 1000.0)
     out = await async_energy_usage(hass, "sensor.gas_import")
@@ -121,7 +121,7 @@ async def test_energy_meter_in_wh_shown_in_kwh(recorder_mock, hass):
 
 
 async def test_gas_meter_in_litres_shown_in_m3(recorder_mock, hass):
-    from custom_components.neat_thermostat.energy_meter import async_energy_usage
+    from custom_components.nook.energy_meter import async_energy_usage
 
     # 250 L an hour = 0.25 m³.
     hours_today = await _import_meter(hass, "sensor.gas_volume", "volume", "L", 250.0)
@@ -132,7 +132,7 @@ async def test_gas_meter_in_litres_shown_in_m3(recorder_mock, hass):
 
 
 def test_display_units():
-    from custom_components.neat_thermostat.energy_meter import display_unit
+    from custom_components.nook.energy_meter import display_unit
 
     assert display_unit("energy", "MJ") == ("kWh", {"energy": "kWh"})
     assert display_unit("volume", "m³") == ("m³", {"volume": "m³"})
@@ -144,7 +144,7 @@ def test_display_units():
 
 
 async def test_energy_none_without_sensor_or_recorder(hass):
-    from custom_components.neat_thermostat.energy_meter import async_energy_usage
+    from custom_components.nook.energy_meter import async_energy_usage
 
     assert await async_energy_usage(hass, "") is None
     assert await async_energy_usage(hass, "sensor.gas_import") is None  # recorder not loaded
@@ -153,7 +153,7 @@ async def test_energy_none_without_sensor_or_recorder(hass):
 async def test_meter_per_day_and_hour_for_energy_page(recorder_mock, hass):
     from homeassistant.util import dt as dt_util
 
-    from custom_components.neat_thermostat.energy_meter import async_energy_days
+    from custom_components.nook.energy_meter import async_energy_days
 
     hours_today = await _import_meter(hass, "sensor.gas_volume", "volume", "L", 250.0)
     out = await async_energy_days(hass, "sensor.gas_volume", days=3)

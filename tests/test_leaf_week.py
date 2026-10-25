@@ -6,7 +6,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.intelligence import (  # noqa: E402
+from custom_components.nook.intelligence import (  # noqa: E402
     LEAF_DAY_MEANINGFUL_MINUTES,
     LeafState,
     leaf_week_stats,

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Copy a built Neat Panel Helper APK into the integration, so Neat can update panels.
+"""Copy a built Nook Panel Helper APK into the integration, so Nook can update panels.
 
 Usage: python3 scripts/sync_panel_helper.py <path to app-release.apk> <output-metadata.json>
-Writes custom_components/neat_thermostat/www/panel-helper/{neat-panel-helper.apk,version.json}.
+Writes custom_components/nook/www/panel-helper/{neat-panel-helper.apk,version.json}.
 """
 
 import hashlib
@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEST = ROOT / "custom_components" / "neat_thermostat" / "www" / "panel-helper"
+DEST = ROOT / "custom_components" / "nook" / "www" / "panel-helper"
 
 
 def main() -> None:

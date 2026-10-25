@@ -1,0 +1,14 @@
+{
+  "domain": "nook",
+  "name": "Nook",
+  "codeowners": ["@james194zt"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend"],
+  "after_dependencies": ["panel_custom"],
+  "documentation": "https://github.com/james194zt/nook",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/james194zt/nook/issues",
+  "requirements": [],
+  "version": "0.7.0"
+}

@@ -1,7 +1,7 @@
 /* Roboto (SIL OFL 1.1, assets/fonts/LICENSE.txt) is bundled: the panel must look the same
-   on the NSPanel, in Neat's preview on a PC, and in tests — not depend on installed fonts. */
+   on the NSPanel, in Nook's preview on a PC, and in tests — not depend on installed fonts. */
 @font-face {
-  font-family: "Neat Roboto";
+  font-family: "Nook Roboto";
   font-style: normal;
   font-weight: 300;
   font-display: block;
@@ -9,7 +9,7 @@
 }
 
 @font-face {
-  font-family: "Neat Roboto";
+  font-family: "Nook Roboto";
   font-style: normal;
   font-weight: 400;
   font-display: block;
@@ -17,7 +17,7 @@
 }
 
 @font-face {
-  font-family: "Neat Roboto";
+  font-family: "Nook Roboto";
   font-style: normal;
   font-weight: 500 600;
   font-display: block;
@@ -25,14 +25,14 @@
 }
 
 @font-face {
-  font-family: "Neat Roboto";
+  font-family: "Nook Roboto";
   font-style: normal;
   font-weight: 700;
   font-display: block;
   src: url("../assets/fonts/roboto-latin-700.woff2") format("woff2");
 }
 
-/* Neat wall panel — touch-first, matches the Neat dashboard card.
+/* Nook wall panel — touch-first, matches the Nook dashboard card.
    Sized in vmin so it fills a square 480×480 panel and scales elsewhere. */
 :root {
   --bg: #16191d;
@@ -51,7 +51,7 @@
   --red: #ef5350;
   --tint: var(--teal);
   --tint-wash: rgba(25, 212, 222, 0.1);
-  font-family: "Neat Roboto", Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: "Nook Roboto", Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 * {

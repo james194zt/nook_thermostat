@@ -12,8 +12,8 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import (  # noqa: E402
-    NeatThermostatCoordinator,
+from custom_components.nook.coordinator import (  # noqa: E402
+    NookCoordinator,
 )
 from tests.test_schedule_ha import MONDAY, setup  # noqa: E402,F401
 
@@ -25,7 +25,7 @@ async def _restart(hass, coord):
     """HA stops (pending writes flushed, as HA's Store does), then a new coordinator loads."""
     hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
     await hass.async_block_till_done()
-    fresh = NeatThermostatCoordinator(hass, coord.entry)
+    fresh = NookCoordinator(hass, coord.entry)
     await fresh.async_initialize_intelligence()
     return fresh
 
@@ -58,7 +58,7 @@ async def test_hold_that_ran_out_while_ha_was_down_is_not_brought_back(hass, set
     hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
     await hass.async_block_till_done()
     freezer.move_to(AT + timedelta(hours=6))
-    fresh = NeatThermostatCoordinator(hass, coord.entry)
+    fresh = NookCoordinator(hass, coord.entry)
     await fresh.async_initialize_intelligence()
     try:
         assert fresh.effective_main_target()[0] != scheduled + 1.5

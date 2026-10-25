@@ -8,13 +8,13 @@ replaced by the app in [`../../nspanel-thermostat/`](../../nspanel-thermostat/) 
 
 What changed since this version:
 
-- The current app is served by the integration at `/neat_thermostat/static/wall/` — no copying
-  files into `/config/www`, and panels reload themselves after each Neat update.
-- Embedded mode works in the Neat panel's Wall panels preview.
+- The current app is served by the integration at `/nook/static/wall/` — no copying
+  files into `/config/www`, and panels reload themselves after each Nook update.
+- Embedded mode works in the Nook panel's Wall panels preview.
 - The Android APK / Capacitor wrapper in `apk/` was abandoned; panels run in a kiosk browser.
 
 If a panel still opens `/local/nspanel-thermostat/`, point its kiosk browser at:
 
 ```
-http://<home-assistant>:8123/neat_thermostat/static/wall/index.html?device=<panel id>
+http://<home-assistant>:8123/nook/static/wall/index.html?device=<panel id>
 ```

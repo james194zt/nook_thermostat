@@ -1,5 +1,5 @@
 /**
- * Runs the wall app inside Home Assistant (e.g. the Neat panel's preview iframe),
+ * Runs the wall app inside Home Assistant (e.g. the Nook panel's preview iframe),
  * borrowing the parent page's logged-in `hass` instead of a token.
  *
  * `hass.connection` is home-assistant-js-websocket's Connection: it has

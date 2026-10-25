@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.websocket_api import reorder_rooms  # noqa: E402
+from custom_components.nook.websocket_api import reorder_rooms  # noqa: E402
 from tests.test_schedule_ha import setup  # noqa: E402,F401
 
 ROOMS = [{"id": "a"}, {"id": "b"}, {"id": "c"}]

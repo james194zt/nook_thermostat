@@ -14,8 +14,8 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import (  # noqa: E402
-    NeatThermostatCoordinator,
+from custom_components.nook.coordinator import (  # noqa: E402
+    NookCoordinator,
 )
 
 START = "2026-10-21 15:00:00+01:00"
@@ -27,7 +27,7 @@ async def setup(hass, monkeypatch, freezer):
     await hass.config.async_set_time_zone("Europe/London")
     freezer.move_to(START)
     monkeypatch.setattr(
-        "custom_components.neat_thermostat.coordinator.boiler_cycle_guard",
+        "custom_components.nook.coordinator.boiler_cycle_guard",
         lambda want_on, is_on, seconds, **_kw: (want_on, 0.0),
     )
 
@@ -51,7 +51,7 @@ async def setup(hass, monkeypatch, freezer):
 
     async def make(room_sensor):
         entry = MockConfigEntry(
-            domain="neat_thermostat",
+            domain="nook",
             data={"heater": "switch.boiler", "temperature_sensor": "sensor.house"},
             options={
                 "true_radiant": True,
@@ -64,7 +64,7 @@ async def setup(hass, monkeypatch, freezer):
             },
         )
         entry.add_to_hass(hass)
-        coord = NeatThermostatCoordinator(hass, entry)
+        coord = NookCoordinator(hass, entry)
         await coord.async_initialize_intelligence()
         coords.append(coord)
         return coord

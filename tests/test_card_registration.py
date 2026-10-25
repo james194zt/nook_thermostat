@@ -8,7 +8,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat import panel  # noqa: E402
+from custom_components.nook import panel  # noqa: E402
 
 VERSION = json.loads((Path(panel.__file__).parent / "manifest.json").read_text())["version"]
 
@@ -23,7 +23,7 @@ async def test_card_js_added_once_with_version(hass):
     ):
         await panel.async_register_panel(hass)
         await panel.async_register_panel(hass)  # e.g. entry reload
-    add_js.assert_called_once_with(hass, f"/neat_thermostat/static/neat-thermostat-card.js?v={VERSION}")
+    add_js.assert_called_once_with(hass, f"/nook/static/nook-card.js?v={VERSION}")
 
 
 def test_card_file_ships_in_www():

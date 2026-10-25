@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-page="app">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Nook · Wall panel</title>
+    <!-- Before app.css arrives: nothing unstyled may flash (the overlays below would
+         show as raw text), so the page is blank until the app says it's ready. -->
+    <style>
+      html, body { margin: 0; background: #16191d; color: #f4f5f6; }
+      .hidden, [hidden] { display: none !important; }
+      body.booting > * { visibility: hidden !important; }
+    </style>
+  </head>
+  <body class="booting">
+    <div class="app" id="app" hidden>
+      <header class="top">
+        <div class="page-dots" aria-hidden="true">
+          <button type="button" class="page-dot on" data-go="dial" tabindex="-1"></button>
+          <button type="button" class="page-dot" data-go="usage" tabindex="-1"></button>
+        </div>
+        <button class="top-back hidden" id="backToHome" type="button" aria-label="Back to the house">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button type="button" class="top-title" id="zonePill">
+          <span class="top-name" id="heroLabel">Home</span>
+          <span class="top-status" id="topStatus"></span>
+        </button>
+        <div class="top-side">
+          <span class="conn-pill" id="connectionDot">Offline</span>
+          <span class="chip outdoor" title="Outside">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15 13V5a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0zm-3 7a3 3 0 0 1-1.5-5.6l.5-.29V5a1 1 0 0 1 2 0v9.11l.5.29A3 3 0 0 1 12 20z"/></svg>
+            <span id="outsideTemp">--</span>
+          </span>
+          <span class="chip humidity" title="Humidity">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3.2S6.5 10.1 6.5 14.2a5.5 5.5 0 0 0 11 0C17.5 10.1 12 3.2 12 3.2z"/></svg>
+            <span id="insideHumidity">--</span>
+          </span>
+        </div>
+        <!-- Room view only: the room's settings (js/room-settings.js). -->
+        <button class="top-cog" id="roomSettingsBtn" type="button" aria-label="Room settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7m7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.37-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.37 2.65a7.3 7.3 0 0 0-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65a.5.5 0 0 0 .5.42h4a.5.5 0 0 0 .5-.42l.37-2.65a7.3 7.3 0 0 0 1.69-.99l2.49 1.01a.5.5 0 0 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64z"/></svg>
+        </button>
+      </header>
+
+      <div class="notices">
+        <span class="notice hidden" id="windowBanner">Window open — heating paused</span>
+        <span class="notice hidden" id="summerPill">Summer mode</span>
+      </div>
+
+      <section class="stage">
+        <button class="step" id="tempDown" type="button" aria-label="Lower the temperature">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 13H5v-2h14z"/></svg>
+        </button>
+        <!-- The dial is fitted into this box at the arc's own shape (app.js fitDial). -->
+        <div class="dial-box" id="dialBox">
+        <div class="dial" id="thermoRing" data-state="idle">
+          <!-- y 8..174: the empty space above the arc and its open bottom are cropped,
+               so the ring sits up and can be bigger (the handle may draw outside). -->
+          <svg class="dial-svg" viewBox="0 8 200 166" aria-hidden="true">
+            <defs>
+              <linearGradient id="dialGrad" x1="0" y1="1" x2="1" y2="0">
+                <stop id="dialG0" offset="0" stop-color="#FFD180" />
+                <stop id="dialG1" offset="1" stop-color="#FF9800" />
+              </linearGradient>
+            </defs>
+            <path class="track" d="M40.6 159.4 A84 84 0 1 1 159.4 159.4" />
+            <path class="fill" id="dialFill" d="M40.6 159.4 A84 84 0 1 1 159.4 159.4" pathLength="100" />
+            <path class="hit" id="dialHit" d="M40.6 159.4 A84 84 0 1 1 159.4 159.4" />
+            <circle class="now-dot" id="nowDot" r="3.6" />
+            <circle class="knob" id="dialKnob" r="9" />
+          </svg>
+          <div class="core">
+            <div class="caption" id="dialCaption">Set to</div>
+            <div class="current-temp" id="currentTemp" aria-live="polite">
+              <span class="temp-int" id="currentTempInt">--</span><span class="temp-dec" id="currentTempDec"></span><span class="temp-unit">°</span>
+            </div>
+            <div class="sub">Indoor <span id="targetTemp">--</span></div>
+            <div class="eta" id="heroSubtitle"></div>
+            <div class="leaf" id="ringLeaf" title="Leaf — saving energy" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 17.4C4.6 9.9 10.6 4.3 20 4z"/><path fill="currentColor" opacity=".68" d="M20 4c.3 9.4-5.4 15.4-13.4 13.4z"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M3.6 20.4 7.4 16.6"/></svg>
+            </div>
+          </div>
+        </div>
+        </div>
+        <button class="step" id="tempUp" type="button" aria-label="Raise the temperature">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+      </section>
+
+      <nav class="modes" id="modeDrawer" aria-label="Mode">
+        <button class="mode-btn" data-mode="heat" type="button">Heat</button>
+        <button class="mode-btn" data-mode="off" type="button">Off</button>
+        <button class="mode-btn" data-preset="eco" type="button">Eco</button>
+        <button class="mode-btn" data-preset="boost" type="button">Boost</button>
+      </nav>
+
+      <section class="rooms">
+        <div class="room-strip" id="roomStrip"></div>
+      </section>
+
+      <!-- Kept for JS compatibility; not shown -->
+      <span class="sr-only" id="actionPill">Idle overview</span>
+      <span class="sr-only" id="connectionLabel">Connecting</span>
+      <span class="sr-only" id="insideTemp">--</span>
+      <div class="sr-only" id="weatherBlock" hidden>
+        <img id="weatherIcon" alt="" width="1" height="1" />
+        <span id="weatherTemp"></span>
+        <span id="weatherLabel"></span>
+        <span id="sunriseTime"></span>
+        <span id="sunsetTime"></span>
+      </div>
+      <div class="sr-only" id="statusRow"></div>
+    </div>
+
+    <!-- Usage: swipe right-to-left from the dial (it sits to the dial's right). js/usage.js -->
+    <section class="usage" id="usagePage" hidden aria-label="Heating usage">
+      <header class="top usage-top">
+        <div class="page-dots" aria-hidden="true">
+          <button type="button" class="page-dot" data-go="dial" tabindex="-1"></button>
+          <button type="button" class="page-dot on" data-go="usage" tabindex="-1"></button>
+        </div>
+        <div class="top-title">
+          <span class="top-name">Usage</span>
+          <span class="top-status">Last 24 hours</span>
+        </div>
+        <div class="top-side">
+          <span class="usage-live hidden" id="usageLive">Heating now</span>
+        </div>
+      </header>
+
+      <div class="usage-tiles" id="usageTiles">
+        <div class="u-tile u-heat">
+          <span class="u-badge" id="usageHeatIcon"></span>
+          <span class="u-value" id="usageOn">--</span>
+          <span class="u-label">Boiler on</span>
+          <span class="u-sub" id="usageRuns"></span>
+        </div>
+        <div class="u-tile u-gas" id="usageGasTile">
+          <span class="u-badge" id="usageGasIcon"></span>
+          <span class="u-value"><span id="usageKwh">--</span><small id="usageUnit">kWh</small></span>
+          <span class="u-label" id="usageKwhLabel">Gas today</span>
+          <span class="u-sub" id="usageKwhSub"></span>
+        </div>
+        <div class="u-tile u-leaf" id="usageLeafTile">
+          <span class="u-badge" id="usageLeafIcon"></span>
+          <span class="u-value" id="usageLeafToday">--</span>
+          <span class="u-label">Leaf today</span>
+          <span class="u-sub" id="usageLeafSub"></span>
+        </div>
+      </div>
+
+      <div class="usage-chart" id="usageChart">
+        <svg id="usageChartSvg" aria-hidden="true"></svg>
+        <div class="usage-legend" id="usageLegend"></div>
+      </div>
+
+      <div class="usage-week" id="usageWeek">
+        <div class="week-days" id="usageWeekDays"></div>
+        <div class="week-streak">
+          <span class="streak-num" id="usageStreak">0</span>
+          <span class="streak-label" id="usageStreakLabel">day streak</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- A room's settings: the cog in a room view. js/room-settings.js -->
+    <section class="room-settings" id="roomSettings" hidden aria-label="Room settings">
+      <header class="top rs-top">
+        <button class="top-back" id="rsBack" type="button" aria-label="Back to the room">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="top-title">
+          <span class="top-name" id="rsName">Room</span>
+          <span class="top-status">Room settings</span>
+        </div>
+      </header>
+      <div class="rs-body" id="rsBody"></div>
+      <div class="rs-toast hidden" id="rsToast" role="status"></div>
+    </section>
+
+    <div class="overlay hidden" id="errorOverlay">
+      <div class="error-card">
+        <h1>Connection failed</h1>
+        <p id="errorMessage"></p>
+        <button type="button" id="retrySetup">Open setup</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="deviceOverlay">
+      <div class="error-card device-card">
+        <h1>Choose this panel</h1>
+        <p>Select the wall panel ID from Nook. You only do this once per screen.</p>
+        <div class="device-pick-list" id="devicePickList"></div>
+        <label for="customDeviceId">Or enter a new device ID</label>
+        <input id="customDeviceId" placeholder="hallway" autocomplete="off" />
+        <button type="button" id="saveDeviceId">Use this device ID</button>
+        <button type="button" class="secondary-link" id="openSetupFromPicker">Open device manager</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="pinOverlay">
+      <div class="error-card pin-card">
+        <h1>Enter PIN</h1>
+        <p>This panel is locked. Enter the 4-digit PIN from Nook Settings.</p>
+        <div class="pin-display" id="pinDisplay">••••</div>
+        <div class="pin-pad" id="pinPad">
+          <button type="button" data-digit="1">1</button>
+          <button type="button" data-digit="2">2</button>
+          <button type="button" data-digit="3">3</button>
+          <button type="button" data-digit="4">4</button>
+          <button type="button" data-digit="5">5</button>
+          <button type="button" data-digit="6">6</button>
+          <button type="button" data-digit="7">7</button>
+          <button type="button" data-digit="8">8</button>
+          <button type="button" data-digit="9">9</button>
+          <button type="button" data-digit="clear">C</button>
+          <button type="button" data-digit="0">0</button>
+          <button type="button" data-digit="ok">OK</button>
+        </div>
+        <p class="pin-error hidden" id="pinError">Incorrect PIN</p>
+      </div>
+    </div>
+
+    <div class="screensaver hidden" id="screensaver" aria-hidden="true">
+      <div class="screensaver-time" data-clock>--:--</div>
+      <div class="screensaver-date" data-date></div>
+      <div class="screensaver-hint">Tap to wake</div>
+    </div>
+
+    <script>
+      (function () {
+        var s = document.createElement("script");
+        s.src = "js/cache-boot.js?t=" + Date.now();
+        document.body.appendChild(s);
+      })();
+    </script>
+  </body>
+</html>

@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from custom_components.neat_thermostat.intelligence import WarmupModel, preheat_status
-from custom_components.neat_thermostat.models import default_schedule
+from custom_components.nook.intelligence import WarmupModel, preheat_status
+from custom_components.nook.models import default_schedule
 
 THU_0447 = datetime(2026, 10, 22, 4, 47)  # local time; block thu 06:30 at 20 °C
 
@@ -54,14 +54,14 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import NeatThermostatCoordinator  # noqa: E402
+from custom_components.nook.coordinator import NookCoordinator  # noqa: E402
 
 
 async def test_boiler_runs_on_through_the_preheat(hass, monkeypatch, freezer):
     await hass.config.async_set_time_zone("Europe/London")
     freezer.move_to("2026-10-22 04:45:00+01:00")
     monkeypatch.setattr(
-        "custom_components.neat_thermostat.coordinator.boiler_cycle_guard",
+        "custom_components.nook.coordinator.boiler_cycle_guard",
         lambda want_on, is_on, seconds, **_kw: (want_on, 0.0),
     )
 
@@ -73,12 +73,12 @@ async def test_boiler_runs_on_through_the_preheat(hass, monkeypatch, freezer):
     hass.states.async_set("switch.boiler", "off")
     hass.states.async_set("sensor.house", "17.4")
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.house"},
         options={"true_radiant": True, "schedule_enabled": True, "eco_temp": 16},
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     try:
         coord.intel.state.warmup.c_per_hour = 1.337

@@ -1,10 +1,10 @@
-"""Neat Panel Helper: pairing, status polling, settings and self-update (needs HA test venv)."""
+"""Nook Panel Helper: pairing, status polling, settings and self-update (needs HA test venv)."""
 
 import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat import panel_helper  # noqa: E402
+from custom_components.nook import panel_helper  # noqa: E402
 from tests.test_schedule_ha import setup  # noqa: E402,F401
 
 HOST = "192.168.1.50"
@@ -62,11 +62,11 @@ async def test_pair_poll_and_update(hass, setup, aioclient_mock, monkeypatch):
     assert state["summary"]["return_button_found"] and not state["summary"]["return_button_showing"]
     stored = await coord._kiosk_store.async_load()
     assert stored["helper_keys"] == {"hallway": "k1"}
-    # Behind the shipped version: told to fetch it from Neat's static path, with its checksum.
+    # Behind the shipped version: told to fetch it from Nook's static path, with its checksum.
     update = _calls(aioclient_mock, "/update")
     assert len(update) == 1
     assert update[0][2] == {
-        "url": "http://192.168.1.10:8123/neat_thermostat/static/panel-helper/neat-panel-helper.apk",
+        "url": "http://192.168.1.10:8123/nook/static/panel-helper/neat-panel-helper.apk",
         "sha256": SHIPPED["sha256"],
         "version_code": 3,
     }

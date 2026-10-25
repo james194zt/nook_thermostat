@@ -45,7 +45,7 @@
   // Resolves when the app's stylesheet has loaded (or failed): the app only
   // shows itself after this, so nothing appears unstyled.
   let cssDone;
-  window.__neatCssReady = new Promise((resolve) => {
+  window.__nookCssReady = new Promise((resolve) => {
     cssDone = resolve;
   });
 

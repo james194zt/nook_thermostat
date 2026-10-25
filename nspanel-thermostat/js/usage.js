@@ -206,7 +206,7 @@ export class UsagePage {
     const client = this.getClient();
     if (!client?.request) return;
     try {
-      this.data = await client.request("neat_thermostat/get_wall_usage");
+      this.data = await client.request("nook/get_wall_usage");
       this.render();
     } catch {
       // Keep what's on screen; the next refresh tries again.

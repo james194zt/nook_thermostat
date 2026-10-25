@@ -7,11 +7,11 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-PKG_DIR = Path(__file__).resolve().parents[1] / "custom_components" / "neat_thermostat"
+PKG_DIR = Path(__file__).resolve().parents[1] / "custom_components" / "nook"
 
 
 def _load(name):
-    pkg = "neat_thermostat"
+    pkg = "nook"
     if pkg not in sys.modules:
         mod = types.ModuleType(pkg)
         mod.__path__ = [str(PKG_DIR)]

@@ -3,26 +3,26 @@ living room sensor reported every 15 min / 0.5 °C, so TRV calibration lagged)."
 
 import pytest
 
-from custom_components.neat_thermostat.models import NeatConfig
+from custom_components.nook.models import NookConfig
 
 BASE = {"heater": "switch.boiler", "temperature_sensor": "sensor.hall", "backup_temperature_sensor": "sensor.gw"}
 
 
 def test_old_house_switch_becomes_house_and_backup():
-    cfg = NeatConfig.from_entry_data({**BASE, "fast_sensor_reporting": True})
+    cfg = NookConfig.from_entry_data({**BASE, "fast_sensor_reporting": True})
     assert cfg.fast_reporting_sensors == ["sensor.hall", "sensor.gw"]
 
 
 def test_old_switch_off_means_none():
-    assert NeatConfig.from_entry_data(BASE).fast_reporting_sensors == []
+    assert NookConfig.from_entry_data(BASE).fast_reporting_sensors == []
 
 
 def test_saved_list_wins_over_the_old_switch():
-    cfg = NeatConfig.from_entry_data(
+    cfg = NookConfig.from_entry_data(
         {**BASE, "fast_sensor_reporting": True, "fast_reporting_sensors": ["sensor.lounge"]}
     )
     assert cfg.fast_reporting_sensors == ["sensor.lounge"]
-    cfg = NeatConfig.from_entry_data({**BASE, "fast_sensor_reporting": True, "fast_reporting_sensors": []})
+    cfg = NookConfig.from_entry_data({**BASE, "fast_sensor_reporting": True, "fast_reporting_sensors": []})
     assert cfg.fast_reporting_sensors == []
     assert cfg.to_dict()["fast_reporting_sensors"] == []
 
@@ -31,12 +31,12 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import NeatThermostatCoordinator  # noqa: E402
+from custom_components.nook.coordinator import NookCoordinator  # noqa: E402
 
 
 async def test_sensor_list_shows_every_sensor_and_its_uses(hass):
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={
             "backup_temperature_sensor": "sensor.gw",
@@ -50,7 +50,7 @@ async def test_sensor_list_shows_every_sensor_and_its_uses(hass):
         },
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     try:
         info = {s["entity_id"]: s for s in coord.temperature_sensors_info()}
@@ -70,7 +70,7 @@ async def test_sensor_list_shows_every_sensor_and_its_uses(hass):
 async def test_missed_recheck_of_an_applied_sensor_is_not_an_error(hass, monkeypatch):
     """23 Oct live: the living room SNZB-02P had Faster updates (0.1 °C every ~5 min), but
     slept through the post-restart re-check and the card showed it as not set."""
-    from custom_components.neat_thermostat import zigbee_reporting
+    from custom_components.nook import zigbee_reporting
 
     async def asleep(_hass, _entity_id, *, fast):
         raise zigbee_reporting.ReportingError("the sensor didn't answer (it may be asleep) — will retry")
@@ -78,12 +78,12 @@ async def test_missed_recheck_of_an_applied_sensor_is_not_an_error(hass, monkeyp
     monkeypatch.setattr(zigbee_reporting, "zha_ieee", lambda _hass, _e: "00:11:22:33:44:55:66:77")
     monkeypatch.setattr(zigbee_reporting, "async_configure", asleep)
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={"fast_reporting_sensors": ["sensor.hall", "sensor.lounge"]},
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     try:
         coord.intel.state.fast_reporting = ["sensor.lounge"]  # set on the sensor before the restart
@@ -100,7 +100,7 @@ async def test_missed_recheck_of_an_applied_sensor_is_not_an_error(hass, monkeyp
 async def test_sleepy_sensor_gets_the_request_when_it_reports(hass, monkeypatch):
     """23 Oct live: bathroom/ensuite SNZB-02Ms missed every half-hourly retry (asleep).
     A sensor is awake just after it sends a reading: retry then, to that sensor alone."""
-    from custom_components.neat_thermostat import zigbee_reporting
+    from custom_components.nook import zigbee_reporting
 
     awake = {"sensor.bath": False}
     sent: list[str] = []
@@ -114,12 +114,12 @@ async def test_sleepy_sensor_gets_the_request_when_it_reports(hass, monkeypatch)
     monkeypatch.setattr(zigbee_reporting, "async_configure", configure)
     hass.states.async_set("sensor.bath", "19.6")
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={"fast_reporting_sensors": ["sensor.bath"], "watch_temperature_sensors": ["sensor.bath"]},
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     monkeypatch.setattr(coord, "_zigbee_settled", lambda: True)
     monkeypatch.setattr(coord, "async_request_refresh", lambda: hass.async_add_executor_job(lambda: None))
@@ -143,9 +143,9 @@ async def test_sleepy_sensor_gets_the_request_when_it_reports(hass, monkeypatch)
 
 async def test_rejoined_sensor_gets_faster_updates_again(hass, monkeypatch):
     """23 Oct live: a ZHA Reconfigure (unavailable → back) reset the bedroom 1 sensor to
-    ZHA's 0.5 °C reporting seconds after Neat had set Faster updates, and Neat kept
+    ZHA's 0.5 °C reporting seconds after Nook had set Faster updates, and Nook kept
     showing it as set."""
-    from custom_components.neat_thermostat import zigbee_reporting
+    from custom_components.nook import zigbee_reporting
 
     sent: list[str] = []
 
@@ -156,12 +156,12 @@ async def test_rejoined_sensor_gets_faster_updates_again(hass, monkeypatch):
     monkeypatch.setattr(zigbee_reporting, "async_configure", configure)
     hass.states.async_set("sensor.bed1", "23.9")
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={"fast_reporting_sensors": ["sensor.bed1"], "watch_temperature_sensors": ["sensor.bed1"]},
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     monkeypatch.setattr(coord, "_zigbee_settled", lambda: True)
     monkeypatch.setattr(coord, "async_request_refresh", lambda: hass.async_add_executor_job(lambda: None))
@@ -183,8 +183,8 @@ async def test_rejoined_sensor_gets_faster_updates_again(hass, monkeypatch):
         await coord.async_shutdown()
 
 
-async def test_neat_follows_entity_id_renames(hass):
-    """23 Oct live: renaming the bedroom 1 sensor in HA left Neat on an id that no longer existed."""
+async def test_nook_follows_entity_id_renames(hass):
+    """23 Oct live: renaming the bedroom 1 sensor in HA left Nook on an id that no longer existed."""
     from homeassistant.helpers import entity_registry as er
 
     reg = er.async_get(hass)
@@ -194,7 +194,7 @@ async def test_neat_follows_entity_id_renames(hass):
     calls = []
     hass.services.async_register("switch", "turn_off", lambda call: calls.append(call))
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={
             "watch_temperature_sensors": ["sensor.ensuite_bed1_temperature"],
@@ -204,7 +204,7 @@ async def test_neat_follows_entity_id_renames(hass):
         },
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     await coord.async_setup_listeners()
     try:
@@ -246,7 +246,7 @@ async def test_floors_from_ha_areas_and_watched_sensors(hass):
     reg.async_update_entity(sensor.entity_id, area_id=bath.id)  # sensor: its own area
 
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
         options={
             "watch_temperature_sensors": ["sensor.bath"],
@@ -254,7 +254,7 @@ async def test_floors_from_ha_areas_and_watched_sensors(hass):
         },
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     try:
         assert coord.room_floors()["hall"]["name"] == "Ground Floor"

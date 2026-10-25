@@ -154,7 +154,7 @@ function updateCentreControls(state, target = getEffectiveTarget(state)) {
   setCurrentTempDisplay(target);
 }
 
-// One icon set for modes, matching the Neat dashboard card (flame / power / leaf).
+// One icon set for modes, matching the Nook dashboard card (flame / power / leaf).
 const MODE_ICONS = {
   heat: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2c.5 3.2-1.6 5-3.2 6.9C7.4 10.6 6 12.4 6 15a6 6 0 0 0 12 0c0-2.6-1.3-4.6-2.6-6.1-.3 1.6-1.1 2.7-2.3 3.2.6-3.7-.3-7.6-1.1-10.1z"/></svg>`,
   off: `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M12 3v8M6.4 6.6a8 8 0 1 0 11.2 0"/></svg>`,
@@ -366,7 +366,7 @@ function getHvacAction(state) {
   return state.attributes.hvac_action || state.state || "unknown";
 }
 
-/* —— Dial: a 270° arc like the Neat dashboard card (same path, same colours) —— */
+/* —— Dial: a 270° arc like the Nook dashboard card (same path, same colours) —— */
 // viewBox is x 0..200, y viewTop..viewTop+viewH (empty space above and below the arc cropped).
 const DIAL = {
   cx: 100, cy: 100, r: 84, startDeg: 135, sweepDeg: 270, defaultMin: 5, defaultMax: 30, viewTop: 8, viewH: 166,
@@ -478,7 +478,7 @@ function applyTheme(state) {
     target > current + 0.05 &&
     mode !== "off";
 
-  // Heating = what Neat reports (the boiler really is on for this zone); a
+  // Heating = what Nook reports (the boiler really is on for this zone); a
   // fresh tap upwards shows it straight away, before HA catches up.
   const heating = action === "heating" || (optimisticTarget != null && needsHeat);
 
@@ -645,7 +645,7 @@ function hidePinOverlay() {
   pinBuffer = "";
 }
 
-/** Room settings change Neat itself: behind the PIN whenever one is set (not just with the dial lock). */
+/** Room settings change Nook itself: behind the PIN whenever one is set (not just with the dial lock). */
 async function ensureSettingsUnlocked(action) {
   if (!config.pinConfigured || panelUnlocked) {
     await action();
@@ -654,7 +654,7 @@ async function ensureSettingsUnlocked(action) {
   showPinOverlay(action);
 }
 
-/** The Neat room behind the room view (the panel config says; the room entity too). */
+/** The Nook room behind the room view (the panel config says; the room entity too). */
 function activeRoomId() {
   if (isPrimaryView()) return null;
   return (
@@ -675,7 +675,7 @@ async function ensureUnlocked(action) {
 async function submitPin() {
   if (!client?.request || pinBuffer.length !== 4) return;
   try {
-    const result = await client.request("neat_thermostat/verify_wall_pin", {
+    const result = await client.request("nook/verify_wall_pin", {
       pin: pinBuffer,
       panel_id: config.deviceId,
     });
@@ -775,7 +775,7 @@ function updateRoomNavigation() {
     ui.backToHome.setAttribute("aria-label", `Back to ${homeName}`);
   }
   ui.app.classList.toggle("room-view", inRoom);
-  // A room shown from a bare TRV (no Neat room) has no settings to open.
+  // A room shown from a bare TRV (no Nook room) has no settings to open.
   ui.roomSettingsBtn?.classList.toggle("hidden", !activeRoomId());
   renderWeather();
 }
@@ -878,9 +878,9 @@ function setConnectionState(connected) {
 }
 
 /* —— Clean start: the page stays blank (body.booting) until it can show the real
-   thermostat — Neat's config plus the house state — so a reload (e.g. waking from
+   thermostat — Nook's config plus the house state — so a reload (e.g. waking from
    screen-off) never flashes setup screens or an empty dial. —— */
-const BOOT_STATES_KEY = "neat-wall-states-v1";
+const BOOT_STATES_KEY = "nook-wall-states-v1";
 const BOOT_STATES_EVERY_MS = 10000;
 let revealed = false;
 let bootStatesSavedAt = 0;
@@ -888,7 +888,7 @@ let bootStatesSavedAt = 0;
 function revealApp() {
   if (revealed) return;
   revealed = true;
-  (window.__neatCssReady || Promise.resolve()).then(() =>
+  (window.__nookCssReady || Promise.resolve()).then(() =>
     requestAnimationFrame(() => document.body.classList.remove("booting"))
   );
 }
@@ -897,7 +897,7 @@ function revealApp() {
 setTimeout(revealApp, 6000);
 
 function readyToShow() {
-  return Boolean(config.fromNeat && getPrimaryState());
+  return Boolean(config.fromNook && getPrimaryState());
 }
 
 /** The last states this panel showed, so the first frame after a reload is complete. */
@@ -1002,7 +1002,7 @@ async function showDevicePicker() {
 
   let devices = [];
   try {
-    const result = await client?.request?.("neat_thermostat/list_wall_panels");
+    const result = await client?.request?.("nook/list_wall_panels");
     devices = (result?.wall_panels || []).map((p) => ({
       id: p.id,
       label: p.label || p.id,
@@ -1030,7 +1030,7 @@ async function showDevicePicker() {
 
   if (!devices.length) {
     ui.devicePickList.innerHTML =
-      `<p style="margin:0;color:rgba(255,255,255,0.65);font-size:14px;line-height:1.4">No wall panels in Neat yet. Add them in Home Assistant → Neat Thermostat → Wall panels, or open setup.html.</p>`;
+      `<p style="margin:0;color:rgba(255,255,255,0.65);font-size:14px;line-height:1.4">No wall panels in Nook yet. Add them in Home Assistant → Nook → Wall panels, or open setup.html.</p>`;
   }
 }
 
@@ -1200,7 +1200,7 @@ async function connect() {
     screenSaver = null;
     displayPower = null;
 
-    // The Neat panel's Wall panels preview: never blank the preview, and never
+    // The Nook panel's Wall panels preview: never blank the preview, and never
     // send the real panel's display to sleep from someone's browser.
     if (new URLSearchParams(window.location.search).get("preview") === "1") return;
 
@@ -1241,7 +1241,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("online", checkConnectionOnWake);
 // Fully's screenOn (display-power.js): the screen was off, so start from the dial.
-window.__neatScreenOn = () => {
+window.__nookScreenOn = () => {
   usage.resetToDial();
   roomSettings.close();
   checkConnectionOnWake();

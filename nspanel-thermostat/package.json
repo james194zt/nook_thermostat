@@ -2,7 +2,7 @@
   "name": "nspanel-thermostat",
   "version": "2.0.0-dev",
   "private": true,
-  "description": "Neat Thermostat wall panel app (NSPanel)",
+  "description": "Nook wall panel app (NSPanel)",
   "scripts": {
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",

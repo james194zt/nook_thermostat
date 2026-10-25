@@ -14,8 +14,8 @@ from homeassistant.helpers import device_registry as dr  # noqa: E402
 from homeassistant.helpers import entity_registry as er  # noqa: E402
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import (  # noqa: E402
-    NeatThermostatCoordinator,
+from custom_components.nook.coordinator import (  # noqa: E402
+    NookCoordinator,
 )
 
 START = "2026-10-21 06:00:00+01:00"
@@ -29,7 +29,7 @@ async def setup(hass, monkeypatch, freezer):
     await hass.config.async_set_time_zone("Europe/London")
     freezer.move_to(START)
     monkeypatch.setattr(
-        "custom_components.neat_thermostat.coordinator.boiler_cycle_guard",
+        "custom_components.nook.coordinator.boiler_cycle_guard",
         lambda want_on, is_on, seconds, **_kw: (want_on, 0.0),
     )
     zha = MockConfigEntry(domain="zha")
@@ -88,7 +88,7 @@ async def setup(hass, monkeypatch, freezer):
 
     async def make(calibrate=True, sensor=ROOM_SENSOR):
         entry = MockConfigEntry(
-            domain="neat_thermostat",
+            domain="nook",
             data={"heater": "switch.boiler", "temperature_sensor": "sensor.house"},
             options={
                 "true_radiant": False,
@@ -101,7 +101,7 @@ async def setup(hass, monkeypatch, freezer):
             },
         )
         entry.add_to_hass(hass)
-        coord = NeatThermostatCoordinator(hass, entry)
+        coord = NookCoordinator(hass, entry)
         await coord.async_initialize_intelligence()
         entries.append(coord)
         return coord
@@ -389,7 +389,7 @@ async def test_house_sensor_room_keeps_its_top_up_while_the_house_calls(hass, se
 
 async def test_settling_room_sensor_is_ignored(hass, setup, freezer):
     """21 Oct live: a new living room sensor came on at 25.0 °C (warm from handling)
-    and fell 3.7 °C in 25 min; Neat calibrated to it within 3 minutes."""
+    and fell 3.7 °C in 25 min; Nook calibrated to it within 3 minutes."""
     make, trv = setup
     trv["raw"] = 17.0
     trv["report"]()

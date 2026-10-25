@@ -1,7 +1,7 @@
-"""Wall panel payload uses Neat's real entity ids (needs HA test venv).
+"""Wall panel payload uses Nook's real entity ids (needs HA test venv).
 
-HA names Neat's climates itself (e.g. climate.neat_thermostat_neat_home) while
-climate.neat_home can be some other integration's thermostat.
+HA names Nook's climates itself (e.g. climate.nook_nook_home) while
+climate.nook_home can be some other integration's thermostat.
 """
 
 import pytest
@@ -10,16 +10,16 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.helpers import entity_registry as er  # noqa: E402
 
-from custom_components.neat_thermostat.models import WallPanelConfig  # noqa: E402
+from custom_components.nook.models import WallPanelConfig  # noqa: E402
 from tests.test_schedule_ha import setup  # noqa: E402,F401
 
 
 def _register(hass):
     reg = er.async_get(hass)
     # The user's old generic_thermostat owns the "obvious" name.
-    reg.async_get_or_create("climate", "generic_thermostat", "boiler", suggested_object_id="neat_home")
-    reg.async_get_or_create("climate", "neat_thermostat", "neat_home", suggested_object_id="neat_thermostat_neat_home")
-    reg.async_get_or_create("climate", "neat_thermostat", "neat_lounge", suggested_object_id="hallway_neat_thermostat_neat_lounge")
+    reg.async_get_or_create("climate", "generic_thermostat", "boiler", suggested_object_id="nook_home")
+    reg.async_get_or_create("climate", "nook", "nook_home", suggested_object_id="nook_nook_home")
+    reg.async_get_or_create("climate", "nook", "nook_lounge", suggested_object_id="hallway_nook_nook_lounge")
 
 
 async def _payload(hass, coord, primary):
@@ -28,21 +28,21 @@ async def _payload(hass, coord, primary):
     return coord.wall_panel_payload("hallway")
 
 
-async def test_old_default_points_at_neats_house_climate(hass, setup):
+async def test_old_default_points_at_nooks_house_climate(hass, setup):
     coord, _calls = setup
     _register(hass)
-    payload = await _payload(hass, coord, "climate.neat_home")
-    assert payload["primary"]["entity"] == "climate.neat_thermostat_neat_home"
+    payload = await _payload(hass, coord, "climate.nook_home")
+    assert payload["primary"]["entity"] == "climate.nook_nook_home"
     assert payload["rooms"] == [
-        {"entity": "climate.hallway_neat_thermostat_neat_lounge", "name": "Lounge", "id": "lounge"}
+        {"entity": "climate.hallway_nook_nook_lounge", "name": "Lounge", "id": "lounge"}
     ]
 
 
-async def test_blank_primary_means_neat_house(hass, setup):
+async def test_blank_primary_means_nook_house(hass, setup):
     coord, _calls = setup
     _register(hass)
     payload = await _payload(hass, coord, "")
-    assert payload["primary"]["entity"] == "climate.neat_thermostat_neat_home"
+    assert payload["primary"]["entity"] == "climate.nook_nook_home"
 
 
 async def test_deliberate_other_climate_is_kept(hass, setup):

@@ -6,7 +6,7 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.helpers import entity_registry as er  # noqa: E402
 
-from custom_components.neat_thermostat.climate import NeatHomeClimate, NeatRoomClimate  # noqa: E402
+from custom_components.nook.climate import NookHomeClimate, NookRoomClimate  # noqa: E402
 from tests.test_schedule_ha import MONDAY, _tick, setup  # noqa: E402,F401
 
 
@@ -20,13 +20,13 @@ async def test_set_temperature_writes_state_immediately(hass, setup, freezer):
     coord, _calls = setup
     freezer.move_to(f"{MONDAY} 12:00:00+01:00")
     await _tick(hass, coord)
-    home = _attach(hass, NeatHomeClimate(coord), "climate.neat_thermostat_neat_home")
+    home = _attach(hass, NookHomeClimate(coord), "climate.nook_nook_home")
     await home.async_set_temperature(temperature=22.5)
     # No coordinator refresh awaited: the new target must already be in the state machine.
-    assert hass.states.get("climate.neat_thermostat_neat_home").attributes["temperature"] == 22.5
+    assert hass.states.get("climate.nook_nook_home").attributes["temperature"] == 22.5
 
     await home.async_set_preset_mode("eco")
-    assert hass.states.get("climate.neat_thermostat_neat_home").attributes["preset_mode"] == "eco"
+    assert hass.states.get("climate.nook_nook_home").attributes["preset_mode"] == "eco"
 
 
 async def test_house_lists_room_entities_in_order_and_rooms_name_themselves(hass, setup, freezer):
@@ -34,11 +34,11 @@ async def test_house_lists_room_entities_in_order_and_rooms_name_themselves(hass
     freezer.move_to(f"{MONDAY} 12:00:00+01:00")
     await _tick(hass, coord)
     reg = er.async_get(hass)
-    reg.async_get_or_create("climate", "neat_thermostat", "neat_lounge", suggested_object_id="hallway_neat_thermostat_neat_lounge")
-    home = NeatHomeClimate(coord)
-    assert home.extra_state_attributes["room_entities"] == ["climate.hallway_neat_thermostat_neat_lounge"]
+    reg.async_get_or_create("climate", "nook", "nook_lounge", suggested_object_id="hallway_nook_nook_lounge")
+    home = NookHomeClimate(coord)
+    assert home.extra_state_attributes["room_entities"] == ["climate.hallway_nook_nook_lounge"]
 
-    room = NeatRoomClimate(coord, coord.config.rooms[0])
+    room = NookRoomClimate(coord, coord.config.rooms[0])
     attrs = room.extra_state_attributes
     assert attrs["room_name"] == "Lounge"
     assert attrs["room_id"] == "lounge"
@@ -55,7 +55,7 @@ async def test_room_hold_until_for_the_radiators_card(hass, setup, freezer):
     coord.set_room_temperature(room.id, 21.5)
     until = coord.room_hold_until(room)
     assert until is not None and until == coord.room_control(room.id)["hold"]["until"]
-    assert NeatRoomClimate(coord, room).extra_state_attributes["hold_until"] == until
+    assert NookRoomClimate(coord, room).extra_state_attributes["hold_until"] == until
     # A preset replaces the manual setpoint, so there's no hold to show.
     coord.set_room_preset(room.id, "boost")
     assert coord.room_hold_until(room) is None

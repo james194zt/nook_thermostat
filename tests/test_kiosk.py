@@ -19,12 +19,12 @@ from pytest_homeassistant_custom_component.common import (  # noqa: E402
     async_mock_service,
 )
 
-from custom_components.neat_thermostat import kiosk  # noqa: E402
-from custom_components.neat_thermostat.models import WallPanelConfig  # noqa: E402
+from custom_components.nook import kiosk  # noqa: E402
+from custom_components.nook.models import WallPanelConfig  # noqa: E402
 from tests.test_schedule_ha import setup  # noqa: E402,F401
 
 OLD_PAGE = "http://192.168.1.10:8123/local/nspanel-thermostat-v2/index.html"
-GOOD_PAGE = "http://192.168.1.10:8123/neat_thermostat/static/wall/index.html?device=hallway&_v=2.0.45-dev"
+GOOD_PAGE = "http://192.168.1.10:8123/nook/static/wall/index.html?device=hallway&_v=2.0.45-dev"
 P = "hallway_wall_panel"
 ENTITIES = {
     # key: (domain, state)
@@ -91,7 +91,7 @@ async def test_status_flags_old_page_and_drift(hass):
     status = kiosk.panel_status(hass, _panel(device_id), {"kiosk_lock": True, "screen_brightness": 180})
     assert status["online"] and status["page_ok"] is False and not status["in_sync"]
     # No internal URL configured: the server the panel already uses.
-    assert status["expected_url"] == "http://192.168.1.10:8123/neat_thermostat/static/wall/index.html?device=hallway"
+    assert status["expected_url"] == "http://192.168.1.10:8123/nook/static/wall/index.html?device=hallway"
     assert status["settings"]["kiosk_lock"]["ok"] is False
     assert status["settings"]["screen_brightness"]["ok"] is None  # unreadable, not "wrong"
 
@@ -106,7 +106,7 @@ async def test_apply_writes_only_managed_differences_and_moves_the_page(hass):
     assert not calls["turn_off"]  # motion detection isn't managed
     assert calls["set_config"][0].data == {
         "device_id": device_id, "key": "startURL",
-        "value": "http://192.168.1.10:8123/neat_thermostat/static/wall/index.html?device=hallway",
+        "value": "http://192.168.1.10:8123/nook/static/wall/index.html?device=hallway",
     }
     assert calls["load_url"][0].data["url"].endswith("?device=hallway")
     # Moving page: clear Fully's cache first (stale files caused glitches), then load.
@@ -324,7 +324,7 @@ def test_exit_gesture_is_one_of_fullys_choices():
 
 
 def test_bundled_wall_version_reads_the_shipped_app():
-    from custom_components.neat_thermostat.panel import WWW_DIR
+    from custom_components.nook.panel import WWW_DIR
 
     import json
     from pathlib import Path

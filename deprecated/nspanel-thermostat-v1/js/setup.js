@@ -46,7 +46,7 @@ function renderPanels() {
     const li = document.createElement("li");
     li.className = "panel-pick-empty";
     li.textContent =
-      "No wall panels found. Add them in Home Assistant → Neat Thermostat → Wall panels.";
+      "No wall panels found. Add them in Home Assistant → Nook → Wall panels.";
     panelList.appendChild(li);
     return;
   }
@@ -129,19 +129,19 @@ async function connectAndLoad() {
 
   try {
     await waitConnected(haClient);
-    const result = await haClient.request("neat_thermostat/list_wall_panels");
+    const result = await haClient.request("nook/list_wall_panels");
     panels = result?.wall_panels || [];
     renderPanels();
     showStatus(
       panels.length
-        ? `Loaded ${panels.length} wall panel${panels.length === 1 ? "" : "s"} from Neat.`
-        : "Connected, but no wall panels are defined yet in Neat."
+        ? `Loaded ${panels.length} wall panel${panels.length === 1 ? "" : "s"} from Nook.`
+        : "Connected, but no wall panels are defined yet in Nook."
     );
   } catch (err) {
     panels = [];
     renderPanels();
     showStatus(
-      `Could not load wall panels: ${err.message || err}. Is Neat Thermostat installed and set up?`,
+      `Could not load wall panels: ${err.message || err}. Is Nook installed and set up?`,
       true
     );
     setConnectionState("Error", "err");

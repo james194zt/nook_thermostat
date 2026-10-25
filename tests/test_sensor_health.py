@@ -10,9 +10,9 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat import coordinator as coordinator_module  # noqa: E402
-from custom_components.neat_thermostat import zigbee_reporting  # noqa: E402
-from custom_components.neat_thermostat.sensor_health import (  # noqa: E402
+from custom_components.nook import coordinator as coordinator_module  # noqa: E402
+from custom_components.nook import zigbee_reporting  # noqa: E402
+from custom_components.nook.sensor_health import (  # noqa: E402
     SOURCE_BACKUP,
     SOURCE_MAIN,
     SOURCE_NONE,
@@ -335,7 +335,7 @@ async def test_zha_still_starting_retries_soon_and_quietly(hass, backed_up, free
 
 
 async def test_zha_not_imported_before_ha_loads_it(hass, monkeypatch):
-    """Neat must not import ZHA itself during start-up (HA flags it as blocking)."""
+    """Nook must not import ZHA itself during start-up (HA flags it as blocking)."""
     import sys
 
     monkeypatch.setattr(zigbee_reporting, "zha_ieee", lambda hass, e: "aa:bb")

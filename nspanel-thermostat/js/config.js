@@ -16,7 +16,7 @@ export const LEGACY_STORAGE_KEYS = [
   "nspanel-thermostat-config-v2",
 ];
 export const LOCAL_SECRETS_KEY = "nspanel-thermostat-local-secrets";
-// The copy Neat ships is served by Home Assistant itself, so its own origin is the right default.
+// The copy Nook ships is served by Home Assistant itself, so its own origin is the right default.
 export const DEFAULT_HA_URL = /^https?:$/.test(window.location.protocol)
   ? window.location.origin
   : "http://homeassistant.local:8123";
@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG = {
   haUrl: DEFAULT_HA_URL,
   accessToken: "",
   primary: {
-    entity: "climate.neat_home",
+    entity: "climate.nook_home",
     name: "Heating",
     step: 0.5,
   },
@@ -162,20 +162,20 @@ export async function loadRegistry(hassClient = null) {
   return normalizeRegistry(await resolveRegistry(hassClient));
 }
 
-const NEAT_CONFIG_CACHE_PREFIX = "neat-wall-neat-config:";
+const NOOK_CONFIG_CACHE_PREFIX = "nook-wall-nook-config:";
 
-/** Last config Neat gave this panel, so a (re)load starts with the real setup. */
-function readCachedNeatConfig(deviceId) {
+/** Last config Nook gave this panel, so a (re)load starts with the real setup. */
+function readCachedNookConfig(deviceId) {
   if (!deviceId) return null;
   try {
-    return JSON.parse(localStorage.getItem(NEAT_CONFIG_CACHE_PREFIX + deviceId) || "null");
+    return JSON.parse(localStorage.getItem(NOOK_CONFIG_CACHE_PREFIX + deviceId) || "null");
   } catch {
     return null;
   }
 }
 
-/** This screen's size, so Neat can show which shape the panel really is. Not from
- *  Neat's own preview or a test page (those aren't the panel). */
+/** This screen's size, so Nook can show which shape the panel really is. Not from
+ *  Nook's own preview or a test page (those aren't the panel). */
 function realScreen() {
   const params = new URLSearchParams(location.search);
   if (params.has("embedded") || params.has("preview") || window.top !== window) return {};
@@ -188,29 +188,29 @@ function realScreen() {
   };
 }
 
-async function loadFromNeat(hassClient, deviceId) {
+async function loadFromNook(hassClient, deviceId) {
   if (!deviceId) return null;
   if (!hassClient?.request) {
-    // Not connected yet (page load): the last config Neat sent beats the stale
+    // Not connected yet (page load): the last config Nook sent beats the stale
     // bundled devices.json/defaults, which point at a different thermostat.
-    return readCachedNeatConfig(deviceId);
+    return readCachedNookConfig(deviceId);
   }
   try {
-    const result = await hassClient.request("neat_thermostat/get_wall_panel_config", {
+    const result = await hassClient.request("nook/get_wall_panel_config", {
       panel_id: deviceId,
       ...realScreen(),
     });
     const config = result?.config || null;
     if (config) {
       try {
-        localStorage.setItem(NEAT_CONFIG_CACHE_PREFIX + deviceId, JSON.stringify(config));
+        localStorage.setItem(NOOK_CONFIG_CACHE_PREFIX + deviceId, JSON.stringify(config));
       } catch {
         // Storage full/blocked: just no fast start next time.
       }
     }
     return config;
   } catch {
-    return readCachedNeatConfig(deviceId);
+    return readCachedNookConfig(deviceId);
   }
 }
 
@@ -259,18 +259,18 @@ export async function loadConfig(hassClient = null) {
 
   const bundledSensors = await loadBundledSensorDefaults();
 
-  // Prefer central Neat wall-panel config (source of truth).
-  const fromNeat = await loadFromNeat(hassClient, deviceId);
-  if (fromNeat) {
-    // Neat often omits humidity; fill blanks from local devices.json / config.json
+  // Prefer central Nook wall-panel config (source of truth).
+  const fromNook = await loadFromNook(hassClient, deviceId);
+  if (fromNook) {
+    // Nook often omits humidity; fill blanks from local devices.json / config.json
     const merged = fillBlankSensors(
-      mergeConfig(DEFAULT_CONFIG, mergeConfig(fromNeat, localOverrides)),
+      mergeConfig(DEFAULT_CONFIG, mergeConfig(fromNook, localOverrides)),
       bundledSensors
     );
-    return { ...sanitizeConfig(merged), fromNeat: true };
+    return { ...sanitizeConfig(merged), fromNook: true };
   }
 
-  // Fallback: legacy devices.json / HA user-data registry (pre-Neat).
+  // Fallback: legacy devices.json / HA user-data registry (pre-Nook).
   const registry = await resolveRegistry(hassClient);
   let bundled = {};
   try {

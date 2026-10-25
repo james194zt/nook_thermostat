@@ -1,7 +1,7 @@
 """Minimum on/off time across HA restarts, and when it ends (needs HA test venv).
 
 16 Oct: the boiler had run since 06:21; HA restarted at 06:30 (relay unavailable → on,
-so a fresh last_changed) and the dial was turned down. Neat held the boiler on for
+so a fresh last_changed) and the dial was turned down. Nook held the boiler on for
 the full 3-minute minimum run again, while the panel said "Heating to 17".
 """
 
@@ -11,7 +11,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat import control  # noqa: E402
+from custom_components.nook import control  # noqa: E402
 from tests.test_restart_hold import _restart  # noqa: E402
 from tests.test_schedule_ha import MONDAY, _tick, setup  # noqa: E402,F401
 
@@ -32,7 +32,7 @@ async def guarded(hass, setup, freezer, monkeypatch):
     """The real anti-short-cycle guard, 3 min on / 3 min off, boiler off since 17:00."""
     coord, calls = setup
     monkeypatch.setattr(
-        "custom_components.neat_thermostat.coordinator.boiler_cycle_guard",
+        "custom_components.nook.coordinator.boiler_cycle_guard",
         control.boiler_cycle_guard,
     )
     await coord.async_save_config({"min_on_minutes": 3, "min_off_minutes": 3})
@@ -89,7 +89,7 @@ async def test_restart_does_not_restart_the_minimum_run(hass, guarded, freezer):
 
 async def test_relay_changed_while_ha_was_down_uses_its_own_time(hass, guarded, freezer):
     coord, _ = guarded
-    # Neat saw it on at 17:10; while HA was down someone switched it off (17:30).
+    # Nook saw it on at 17:10; while HA was down someone switched it off (17:30).
     freezer.move_to(AT + timedelta(minutes=30))
     fresh = await _restart(hass, coord)
     try:

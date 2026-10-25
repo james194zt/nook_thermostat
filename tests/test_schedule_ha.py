@@ -9,8 +9,8 @@ pytest.importorskip("pytest_homeassistant_custom_component")
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: E402
 
-from custom_components.neat_thermostat.coordinator import (  # noqa: E402
-    NeatThermostatCoordinator,
+from custom_components.nook.coordinator import (  # noqa: E402
+    NookCoordinator,
 )
 
 MONDAY = "2026-09-28"  # BST (UTC+1)
@@ -22,7 +22,7 @@ async def setup(hass, monkeypatch):
     # Minimum on/off can't be 0 any more; these tests jump the clock around, so
     # switch the anti-short-cycle guard off here (test_control.py covers it).
     monkeypatch.setattr(
-        "custom_components.neat_thermostat.coordinator.boiler_cycle_guard",
+        "custom_components.nook.coordinator.boiler_cycle_guard",
         lambda want_on, is_on, seconds, **_kw: (want_on, 0.0),
     )
     calls = []
@@ -44,7 +44,7 @@ async def setup(hass, monkeypatch):
         "climate.trv_lounge", "heat", {"temperature": 16, "current_temperature": 18}
     )
     entry = MockConfigEntry(
-        domain="neat_thermostat",
+        domain="nook",
         data={"heater": "switch.boiler", "temperature_sensor": "sensor.house"},
         options={
             "true_radiant": False,
@@ -62,7 +62,7 @@ async def setup(hass, monkeypatch):
         },
     )
     entry.add_to_hass(hass)
-    coord = NeatThermostatCoordinator(hass, entry)
+    coord = NookCoordinator(hass, entry)
     await coord.async_initialize_intelligence()
     yield coord, calls
     # Cancel listeners and the refresh debouncer, or HA's harness flags lingering timers.

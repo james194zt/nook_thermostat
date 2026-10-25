@@ -1,11 +1,11 @@
-# Neat Thermostat
+# Nook
 
-Home Assistant custom integration that replaces Better Thermostat-style heating control with a **Neat** hub:
+Home Assistant custom integration that replaces Better Thermostat-style heating control with a **Nook** hub:
 
-- **House climate** `climate.neat_home` — schedule, Eco / Boost / Away, window & summer hold
-- **Room climates** `climate.neat_<room>` — own sensors/setpoints; each room can call for heat
+- **House climate** `climate.nook_home` — schedule, Eco / Boost / Away, window & summer hold
+- **Room climates** `climate.nook_<room>` — own sensors/setpoints; each room can call for heat
 - **Boiler demand** — heats when the house **or** any room needs heat
-- **Neat Intelligence (house only)** — True Radiant, Auto-Schedule, Home/Away, Leaf, Safety Temps, Time-to-Temp, Seasonal Savings, Adaptive Comfort
+- **Nook Intelligence (house only)** — True Radiant, Auto-Schedule, Home/Away, Leaf, Safety Temps, Time-to-Temp, Seasonal Savings, Adaptive Comfort
 - **Energy History** — 24h heat timeline with setpoint changes and Leaf days
 - **HA sidebar** — Overview, Energy, Rooms, Schedule, Wall panels, Settings
 - **Wall panels** — optional per-panel temperature PIN lock; multi-sensor rooms
@@ -14,28 +14,28 @@ Home Assistant custom integration that replaces Better Thermostat-style heating 
 
 ### HACS (recommended)
 
-1. HACS → Integrations → Custom repositories → add `https://github.com/james194zt/neat_thermostat` (category: Integration)
-2. Install **Neat Thermostat**
+1. HACS → Integrations → Custom repositories → add `https://github.com/james194zt/nook` (category: Integration)
+2. Install **Nook**
 3. Restart Home Assistant
-4. Settings → Devices & services → Add integration → **Neat Thermostat**
+4. Settings → Devices & services → Add integration → **Nook**
 
 ### Manual
 
-Copy `custom_components/neat_thermostat` into your HA `config/custom_components/` folder, restart, then add the integration.
+Copy `custom_components/nook` into your HA `config/custom_components/` folder, restart, then add the integration.
 
 ## Setup
 
 1. Pick **heater/boiler** entity (switch, input_boolean, or climate) and **house temperature sensor**
 2. Optional: window sensors, person for Away, Eco/Boost/Away temps
-3. Open the **Neat Thermostat** sidebar:
-   - **Rooms** — add TRV climates (creates `climate.neat_*`); optional extra temp sensors (averaged)
+3. Open the **Nook** sidebar:
+   - **Rooms** — add TRV climates (creates `climate.nook_*`); optional extra temp sensors (averaged)
    - **Schedule** — 7-day comfort blocks
    - **Energy** — heat runtime history + Leaf days
    - **Wall panels** — one entry per physical NSPanel (optional temperature lock)
 
 ## Dashboard card
 
-The integration loads its own card — no resource to add. On a dashboard choose **Add card → Neat Thermostat**.
+The integration loads its own card — no resource to add. On a dashboard choose **Add card → Nook**.
 
 - Dial: tap **− / +** or drag the knob round the arc to change the setpoint
 - Heat / Off, and Eco / Boost / Away (tap an active preset again to clear it)
@@ -43,8 +43,8 @@ The integration loads its own card — no resource to add. On a dashboard choose
 - **Compact** layout for small spaces; every section can be hidden in the card editor
 
 ```yaml
-type: custom:neat-thermostat-card
-entity: climate.neat_thermostat_neat_home  # optional — found automatically
+type: custom:nook-card
+entity: climate.nook_nook_home  # optional — found automatically
 layout: full        # or compact
 show_status: true
 show_modes: true
@@ -53,23 +53,23 @@ show_rooms: true
 
 ### Radiators card
 
-**Add card → Neat Radiators** lists every room's radiator / TRV with its own controls. Use it
-instead of HA's thermostat card on the TRVs themselves: Neat owns the TRV setpoints, so a TRV
-changed directly is put back to Neat's target on the next update. This card changes the Neat
-room instead, and Neat then sets the TRV.
+**Add card → Nook Radiators** lists every room's radiator / TRV with its own controls. Use it
+instead of HA's thermostat card on the TRVs themselves: Nook owns the TRV setpoints, so a TRV
+changed directly is put back to Nook's target on the next update. This card changes the Nook
+room instead, and Nook then sets the TRV.
 
 - Per room: small dial (drag or **− / +**), Heat / Off, Eco / Boost, and what it's doing
   ("Heating to 21°", "Window open — paused", "until 22:00" for a manual change that lasts until
   the next schedule change)
 - TRV status: online / offline, battery and valve opening (found on the TRV's device), and
-  "TRV at 18°" while Neat is still sending a new setpoint. Tap a pill for that entity's details
+  "TRV at 18°" while Nook is still sending a new setpoint. Tap a pill for that entity's details
 - Header: how many rooms are heating, TRVs offline, boiler on
 
 ```yaml
-type: custom:neat-radiators-card
+type: custom:nook-radiators-card
 title: Radiators         # optional
-entities:                # optional — all Neat rooms, in your Rooms order, when left out
-  - climate.neat_thermostat_neat_kitchen
+entities:                # optional — all Nook rooms, in your Rooms order, when left out
+  - climate.nook_nook_kitchen
 show_trv: true
 show_modes: true
 ```
@@ -81,22 +81,22 @@ integration** — HACS updates it, nothing to copy into `/config/www`. Set each 
 browser to:
 
 ```
-http://<home-assistant>:8123/neat_thermostat/static/wall/index.html?device=<panel id>
+http://<home-assistant>:8123/nook/static/wall/index.html?device=<panel id>
 ```
 
-Panels reload themselves within a minute of a Neat update.
+Panels reload themselves within a minute of a Nook update.
 
-1. Add the panel in the Neat sidebar → **Wall panels** (the Preview shows exactly what it will look like)
+1. Add the panel in the Nook sidebar → **Wall panels** (the Preview shows exactly what it will look like)
 2. Open the URL on the panel; enter the HA URL + token once on the setup page
-3. Full config loads from Neat via `neat_thermostat/get_wall_panel_config`
+3. Full config loads from Nook via `nook/get_wall_panel_config`
 4. Locked panels prompt for the house **Wall PIN** before setpoint/mode changes; unlock lasts until screensaver/idle
 
 The original v1 app is retired and kept only for reference in [`deprecated/`](deprecated/).
-## Neat Intelligence (house only)
+## Nook Intelligence (house only)
 
-Intelligence applies to **`climate.neat_home` / the boiler**, not per-room TRV learning.
+Intelligence applies to **`climate.nook_home` / the boiler**, not per-room TRV learning.
 
-| Feature | Neat setting | Behaviour |
+| Feature | Nook setting | Behaviour |
 |--------------|--------------|-----------|
 | **True Radiant / Early-On** | Settings → True Radiant (default On) | Learns °C/h warm-up; preheats so the house hits the scheduled temp *at* block start; stops early by the measured radiator coast to limit overshoot. |
 | **Auto-Schedule** | Settings → Auto-Schedule (default Off) | The same change at the same half-hour on the same weekday, on 2+ different days (within 1°C, last 4 weeks), becomes a schedule block or adjusts one. |
@@ -113,9 +113,9 @@ Optional: set an **outdoor temp sensor** so preheat learns (from your own heatin
 
 ## Migrating from Better Thermostat
 
-1. Install Neat and add rooms pointing at the same TRV climates BT used
-2. Point wall panels / automations at `climate.neat_home` (and room entities as needed)
-3. Disable or remove the Better Thermostat integration once Neat is behaving
+1. Install Nook and add rooms pointing at the same TRV climates BT used
+2. Point wall panels / automations at `climate.nook_home` (and room entities as needed)
+3. Disable or remove the Better Thermostat integration once Nook is behaving
 
 NSPanel attributes kept compatible: `hvac_action`, `preset_mode` (`none`/`eco`/`boost`), `window_open`, `summer_mode_state`, plus `safety_active`, `time_to_temp_minutes`, Leaf attrs.
 
@@ -123,17 +123,17 @@ NSPanel attributes kept compatible: `hvac_action`, `preset_mode` (`none`/`eco`/`
 
 | Type | Purpose |
 |------|---------|
-| `neat_thermostat/get_state` | Full config + live snapshot |
-| `neat_thermostat/update_settings` | Eco/Boost/Away, intelligence, safety, PIN, etc. |
-| `neat_thermostat/update_schedule` | 7-day schedule |
-| `neat_thermostat/update_rooms` | Room list (reloads platforms) |
-| `neat_thermostat/get_energy_history` | Energy History days + seasonal banner |
-| `neat_thermostat/stop_seasonal_savings` | Clear seasonal ramp and disable |
-| `neat_thermostat/verify_wall_pin` | Validate wall PIN (NSPanel unlock) |
-| `neat_thermostat/list_wall_panels` | List wall panels |
-| `neat_thermostat/upsert_wall_panel` | Create/update wall panel |
-| `neat_thermostat/delete_wall_panel` | Remove wall panel |
-| `neat_thermostat/get_wall_panel_config` | Full config payload for a wall screen |
+| `nook/get_state` | Full config + live snapshot |
+| `nook/update_settings` | Eco/Boost/Away, intelligence, safety, PIN, etc. |
+| `nook/update_schedule` | 7-day schedule |
+| `nook/update_rooms` | Room list (reloads platforms) |
+| `nook/get_energy_history` | Energy History days + seasonal banner |
+| `nook/stop_seasonal_savings` | Clear seasonal ramp and disable |
+| `nook/verify_wall_pin` | Validate wall PIN (NSPanel unlock) |
+| `nook/list_wall_panels` | List wall panels |
+| `nook/upsert_wall_panel` | Create/update wall panel |
+| `nook/delete_wall_panel` | Remove wall panel |
+| `nook/get_wall_panel_config` | Full config payload for a wall screen |
 
 ## License
 

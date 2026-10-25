@@ -1,11 +1,11 @@
 /* Room settings: the cog under the header chips in a room view.
 
-   Top: the room's Room Temperature settings (as in Neat's room dialog). Below: the TRV's
+   Top: the room's Room Temperature settings (as in Nook's room dialog). Below: the TRV's
    own simple settings — numbers, switches and buttons its integration files under
    Configuration. No option lists, text or times: a wall panel is for quick changes,
-   the rest stays in Neat's room dialog. Everything is sized for a finger: big −/+ that
+   the rest stays in Nook's room dialog. Everything is sized for a finger: big −/+ that
    repeat while held, whole-row toggles, no keyboard. Each change is sent on its own
-   (room fields to Neat, TRV settings straight to the TRV), nothing to save. */
+   (room fields to Nook, TRV settings straight to the TRV), nothing to save. */
 
 const SEND_AFTER_MS = 900; // a pause in −/+ taps before a value is sent
 const REPEAT_DELAY_MS = 450;
@@ -101,7 +101,7 @@ export class RoomSettings {
   async load() {
     const seq = ++this.loadSeq;
     try {
-      const data = await this.getClient()?.request("neat_thermostat/get_wall_room_settings", { room_id: this.roomId });
+      const data = await this.getClient()?.request("nook/get_wall_room_settings", { room_id: this.roomId });
       if (seq !== this.loadSeq || !this.isOpen) return;
       this.data = data;
       this.render();
@@ -270,7 +270,7 @@ export class RoomSettings {
     const [kind, id] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
     try {
       if (kind === "room") {
-        const data = await client.request("neat_thermostat/update_wall_room", { room_id: roomId, [id]: value });
+        const data = await client.request("nook/update_wall_room", { room_id: roomId, [id]: value });
         if (!this.isOpen || this.roomId !== roomId) return;
         this.data = data;
         // Follow the house swaps the fields below it; otherwise leave the page as the finger left it.

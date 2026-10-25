@@ -6,8 +6,8 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.intelligence import active_block_key  # noqa: E402
-from custom_components.neat_thermostat.schedule import (  # noqa: E402
+from custom_components.nook.intelligence import active_block_key  # noqa: E402
+from custom_components.nook.schedule import (  # noqa: E402
     running_block,
     scheduled_temperature,
 )

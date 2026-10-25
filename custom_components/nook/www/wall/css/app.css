@@ -1,0 +1,1721 @@
+/* Roboto (SIL OFL 1.1, assets/fonts/LICENSE.txt) is bundled: the panel must look the same
+   on the NSPanel, in Nook's preview on a PC, and in tests — not depend on installed fonts. */
+@font-face {
+  font-family: "Nook Roboto";
+  font-style: normal;
+  font-weight: 300;
+  font-display: block;
+  src: url("../assets/fonts/roboto-latin-300.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nook Roboto";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../assets/fonts/roboto-latin-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nook Roboto";
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: block;
+  src: url("../assets/fonts/roboto-latin-500.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nook Roboto";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("../assets/fonts/roboto-latin-700.woff2") format("woff2");
+}
+
+/* Nook wall panel — touch-first, matches the Nook dashboard card.
+   Sized in vmin so it fills a square 480×480 panel and scales elsewhere. */
+:root {
+  --bg: #16191d;
+  --bg-hi: #1f2328;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hi: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f4f5f6;
+  --text-muted: rgba(244, 245, 246, 0.58);
+  --heat: #f57c00;
+  --heat-soft: #ff9800;
+  --amber: #ffc107;
+  --green: #52c41a;
+  --teal: #19d4de;
+  --blue: #42a5f5;
+  --red: #ef5350;
+  --tint: var(--teal);
+  --tint-wash: rgba(25, 212, 222, 0.1);
+  font-family: "Nook Roboto", Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--text);
+  background: var(--bg);
+}
+
+button {
+  font: inherit;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  /* Named slots: a hidden row (notices) mustn't shift the others up. */
+  grid-template-areas: "top" "notices" "stage" "modes" "rooms";
+  row-gap: 0;
+  padding: 3vmin 3.2vmin 3.2vmin;
+  overflow: hidden;
+  /* A soft wash of the state colour from the top-left, like the card. */
+  background:
+    radial-gradient(90% 70% at 0% 0%, var(--tint-wash), transparent 70%),
+    linear-gradient(180deg, var(--bg-hi), var(--bg));
+  transition: background 0.4s ease;
+}
+
+.app[data-state="heating"],
+.app[data-state="boost"] {
+  --tint: var(--heat-soft);
+  --tint-wash: rgba(255, 152, 0, 0.16);
+}
+.app[data-state="eco"] {
+  --tint: var(--green);
+  --tint-wash: rgba(82, 196, 26, 0.14);
+}
+.app[data-state="off"] {
+  --tint: #8a9096;
+  --tint-wash: rgba(138, 144, 150, 0.12);
+}
+
+/* —— Top bar —— */
+.top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 1.6vmin;
+  min-height: 10vmin;
+}
+
+.top-back {
+  flex-shrink: 0;
+  width: 10vmin;
+  height: 10vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.top-back svg {
+  width: 5.2vmin;
+  height: 5.2vmin;
+}
+
+.top-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.top-name {
+  font-size: 4.6vmin;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-status {
+  font-size: 3vmin;
+  color: var(--text-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.app[data-state="heating"] .top-status,
+.app[data-state="boost"] .top-status {
+  color: var(--heat-soft);
+}
+
+.top-side {
+  display: flex;
+  align-items: center;
+  gap: 1.2vmin;
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8vmin;
+  padding: 1.2vmin 2.2vmin;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 3.2vmin;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip svg {
+  width: 3.6vmin;
+  height: 3.6vmin;
+}
+
+.chip.outdoor svg {
+  color: var(--green);
+}
+
+.chip.humidity svg {
+  color: var(--blue);
+}
+
+/* Only says something when something's wrong. */
+.conn-pill {
+  display: none;
+  padding: 1.2vmin 2.2vmin;
+  border-radius: 999px;
+  font-size: 3vmin;
+  font-weight: 700;
+  background: rgba(239, 83, 80, 0.2);
+  color: var(--red);
+}
+
+.conn-pill.offline {
+  display: inline-block;
+}
+
+/* —— Notices (window open, summer) —— */
+.notices {
+  grid-area: notices;
+  margin-top: 1.4vmin;
+  display: flex;
+  justify-content: center;
+  gap: 1.4vmin;
+}
+
+
+.notice {
+  padding: 1vmin 2.6vmin;
+  border-radius: 999px;
+  background: rgba(255, 193, 7, 0.18);
+  color: var(--amber);
+  font-size: 2.9vmin;
+  font-weight: 600;
+}
+
+/* —— Dial —— */
+.stage {
+  grid-area: stage;
+  margin: 1.2vmin 0 1.8vmin;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "down dial up";
+  align-items: center;
+  justify-items: center;
+  gap: 1vmin;
+}
+
+/* The box takes whatever room the layout gives; app.js fits the dial inside it at the
+   arc's shape and sets --d so the centre text grows with the dial. */
+.dial-box {
+  grid-area: dial;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dial {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+
+.dial-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dial-svg path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.dial .track {
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 10;
+}
+
+.dial .fill {
+  stroke: url(#dialGrad);
+  stroke-width: 10;
+  transition: stroke-dasharray 0.25s ease;
+}
+
+/* Wide, invisible: the part you drag. */
+.dial .hit {
+  stroke: transparent;
+  stroke-width: 44;
+  cursor: grab;
+}
+
+.dial .knob {
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+  transition: r 0.12s ease;
+}
+
+.dial.dragging .knob {
+  r: 11;
+}
+
+.dial[data-state="heating"] .knob,
+.dial[data-state="boost"] .knob {
+  filter: drop-shadow(0 0 6px rgba(255, 120, 30, 0.9));
+}
+
+.dial[data-state="off"] .knob {
+  display: none;
+}
+
+/* Indoor temperature: a small dot on the track, not a handle. */
+.dial .now-dot {
+  fill: #fff;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.core {
+  position: absolute;
+  inset: 19.3% 16% 3.6%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.caption:empty {
+  display: none;
+}
+
+.caption {
+  font-size: calc(var(--d, 1vmin) * 3.1);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dial[data-state="heating"] .caption,
+.dial[data-state="boost"] .caption {
+  color: var(--heat-soft);
+}
+
+.dial[data-state="eco"] .caption {
+  color: var(--green);
+}
+
+.current-temp {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1;
+  margin: calc(var(--d, 1vmin) * 2) 0 calc(var(--d, 1vmin) * 0.4); /* "Set to" sits a little above the number */
+  font-variant-numeric: tabular-nums;
+}
+
+.temp-int {
+  font-size: calc(var(--d, 1vmin) * 19.5);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+}
+
+.temp-dec {
+  font-size: calc(var(--d, 1vmin) * 9);
+  font-weight: 400;
+  margin-top: calc(var(--d, 1vmin) * 1.2);
+  letter-spacing: -0.03em;
+}
+
+.temp-unit {
+  font-size: calc(var(--d, 1vmin) * 6.6);
+  font-weight: 400;
+  margin-top: calc(var(--d, 1vmin) * 1.2);
+  margin-left: calc(var(--d, 1vmin) * 0.4);
+  color: var(--text-muted);
+}
+
+.current-temp.is-off .temp-int {
+  font-size: calc(var(--d, 1vmin) * 9);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.current-temp.is-off .temp-unit,
+.current-temp.is-empty .temp-unit {
+  display: none;
+}
+
+.current-temp.pending .temp-int,
+.current-temp.pending .temp-dec {
+  color: var(--heat-soft);
+}
+
+.sub {
+  margin-top: calc(var(--d, 1vmin) * 2.2); /* a little breathing room under the target */
+  font-size: calc(var(--d, 1vmin) * 3.8);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.eta {
+  font-size: calc(var(--d, 1vmin) * 3.4);
+  font-weight: 600;
+  color: var(--heat-soft);
+  margin-top: calc(var(--d, 1vmin) * 0.6);
+  min-height: 1.2em;
+}
+
+.eta:empty {
+  visibility: hidden;
+}
+
+.leaf {
+  display: none;
+  width: calc(var(--d, 1vmin) * 4);
+  height: calc(var(--d, 1vmin) * 4);
+  color: var(--green);
+  margin-top: calc(var(--d, 1vmin) * 0.4);
+}
+
+.leaf.is-active {
+  display: block;
+}
+
+.leaf.is-active ~ .eta,
+.eta:not(:empty) ~ .leaf {
+  display: none;
+}
+
+.leaf svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* −/+ sit in the gap at the bottom of the arc. Big, round, easy to hit. */
+.step {
+  width: 14vmin;
+  height: 14vmin;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-hi);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+
+#tempDown {
+  grid-area: down;
+}
+
+#tempUp {
+  grid-area: up;
+}
+
+.step svg {
+  width: 6.4vmin;
+  height: 6.4vmin;
+}
+
+.step:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Off: keep the space so the dial doesn't jump sideways. */
+.step.hidden {
+  display: grid !important;
+  visibility: hidden;
+}
+
+/* —— Modes: always visible, one tap —— */
+.modes {
+  grid-area: modes;
+  margin-bottom: 1.8vmin;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8vmin;
+  padding: 0.8vmin;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2vmin;
+  min-height: 10.5vmin;
+  border-radius: 999px;
+  font-size: 3.4vmin;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mode-btn svg {
+  width: 4.2vmin;
+  height: 4.2vmin;
+  flex-shrink: 0;
+}
+
+.mode-btn:active {
+  background: var(--surface-hi);
+}
+
+.mode-btn.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.mode-btn[data-icon="heat"].active,
+.mode-btn[data-icon="heat"].active svg {
+  color: var(--heat-soft);
+}
+
+.mode-btn[data-icon="eco"].active,
+.mode-btn[data-icon="eco"].active svg {
+  color: var(--green);
+}
+
+.mode-btn[data-icon="boost"].active,
+.mode-btn[data-icon="boost"].active svg {
+  color: var(--amber);
+}
+
+/* —— Rooms —— */
+.rooms {
+  grid-area: rooms;
+  min-width: 0;
+}
+
+.room-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1.2vmin;
+}
+
+/* More than four rooms: scroll sideways instead of squashing. */
+.room-strip.room-strip--many {
+  grid-auto-columns: 22.5vmin;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.room-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.room-chip {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2vmin;
+  padding: 1.8vmin 1.8vmin;
+  border-radius: 2.8vmin;
+  text-align: left;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 0.15s ease;
+}
+
+.room-chip:active {
+  background: var(--surface-hi);
+}
+
+.room-chip.heat {
+  background: rgba(245, 124, 0, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(245, 124, 0, 0.4);
+}
+
+.room-chip.active {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.room-top {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6vmin;
+}
+
+/* Up to two lines: "Living Room 1" and "Living Room 2" must stay tellable apart. */
+.room-name {
+  font-size: 2.6vmin;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+}
+
+.room-top svg {
+  width: 3vmin;
+  height: 3vmin;
+  color: var(--heat-soft);
+  flex-shrink: 0;
+}
+
+.room-temp {
+  margin-top: auto; /* temperature + status line up across tiles */
+  font-size: 5.4vmin;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.room-temp.unknown {
+  color: var(--text-muted);
+}
+
+.room-set {
+  font-size: 2.5vmin;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.room-chip.heat .room-set {
+  color: var(--heat-soft);
+}
+
+.room-off {
+  display: inline-block;
+  padding: 0.2vmin 1.4vmin;
+  border-radius: 999px;
+  font-size: 2.3vmin;
+  font-weight: 700;
+  background: rgba(239, 83, 80, 0.18);
+  color: var(--red);
+}
+
+/* —— Screen shapes ——
+   The layout follows the screen's real shape, so nothing needs setting on the panel and a
+   tablet re-lays itself out when turned. Square (≈1:1, the rules above) is the reference. */
+
+/* Tall (9:16, 1:2, an upright tablet): the dial takes the full width, −/+ sit under it,
+   rooms go two per row. */
+@media (max-aspect-ratio: 4/5) {
+  .app {
+    padding-bottom: 4vmin;
+  }
+
+  .stage {
+    margin: 3vmin 0 3vmin;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "dial dial" "down up";
+    row-gap: 3vmin;
+    column-gap: 14vmin;
+  }
+
+  /* Spare height goes above the dial, so −/+ stay right under it. */
+  .dial {
+    top: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+  }
+
+  #tempDown {
+    justify-self: end;
+  }
+
+  #tempUp {
+    justify-self: start;
+  }
+
+  .modes {
+    margin-bottom: 2.4vmin;
+  }
+
+  .room-strip,
+  .room-strip.room-strip--many {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-columns: auto;
+    gap: 2vmin;
+  }
+
+  /* More than four rooms: scroll the grid, keep the dial big. */
+  .room-strip.room-strip--many {
+    max-height: 52vmin;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .room-chip {
+    padding: 2.4vmin 2.6vmin;
+  }
+
+  .room-name {
+    font-size: 3.4vmin;
+  }
+
+  .room-temp {
+    font-size: 7vmin;
+  }
+
+  .room-set {
+    font-size: 3.2vmin;
+  }
+}
+
+/* Landscape (16:10 tablets, 2:1 panoramic): dial on the left with −/+ under it (as on
+   tall screens), then the modes in a column, then the rooms two per row. */
+@media (min-aspect-ratio: 5/4) {
+  .app {
+    grid-template-columns: minmax(0, 1fr) auto 46vmin;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "top top top"
+      "notices notices notices"
+      "stage modes rooms";
+    column-gap: 3vmin;
+  }
+
+  .stage {
+    margin: 2vmin 0 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "dial dial" "down up";
+    row-gap: 2vmin;
+    column-gap: 12vmin;
+  }
+
+  /* Spare height goes above the dial, so −/+ stay right under it. */
+  .dial {
+    top: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+  }
+
+  .step {
+    width: 13vmin;
+    height: 13vmin;
+  }
+
+  #tempDown {
+    justify-self: end;
+  }
+
+  #tempUp {
+    justify-self: start;
+  }
+
+  .modes {
+    align-self: center;
+    margin: 2vmin 0 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1vmin;
+    padding: 1vmin;
+    border-radius: 7vmin;
+  }
+
+  .mode-btn {
+    justify-content: flex-start;
+    min-height: 13vmin;
+    padding: 0 3.8vmin 0 3vmin;
+    font-size: 3.8vmin;
+    gap: 1.8vmin;
+  }
+
+  .mode-btn svg {
+    width: 4.8vmin;
+    height: 4.8vmin;
+  }
+
+  .rooms {
+    align-self: center;
+    margin-top: 2vmin;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .room-strip,
+  .room-strip.room-strip--many {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-columns: auto;
+    gap: 1.6vmin;
+  }
+
+  .room-strip.room-strip--many {
+    max-height: 78vmin;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .room-chip {
+    min-height: 19vmin;
+  }
+}
+
+/* —— Page dots: which page you're on (dial | usage), in the header's spare middle —— */
+.app,
+.usage {
+  touch-action: pan-y; /* sideways drags come to us as page swipes */
+  will-change: transform;
+}
+
+.top {
+  position: relative;
+}
+
+.page-dots {
+  position: absolute;
+  left: 50%;
+  top: 0.6vmin;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.4vmin;
+  z-index: 1;
+}
+
+.page-dot {
+  width: 5vmin;
+  height: 5vmin;
+  display: grid;
+  place-items: center;
+}
+
+.page-dot::before {
+  content: "";
+  width: 1.7vmin;
+  height: 1.7vmin;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background 0.2s ease, width 0.2s ease;
+}
+
+.page-dot.on::before {
+  width: 3.8vmin;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* —— Usage page —— */
+.usage {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "top" "tiles" "chart" "week";
+  row-gap: 2vmin;
+  padding: 3vmin 3.2vmin 3.2vmin;
+  overflow: hidden;
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgba(30, 111, 224, 0.16), transparent 70%),
+    radial-gradient(70% 60% at 0% 100%, rgba(67, 182, 73, 0.12), transparent 70%),
+    linear-gradient(180deg, var(--bg-hi), var(--bg));
+  transform: translate3d(100%, 0, 0);
+}
+
+.usage[hidden] {
+  display: none;
+}
+
+.usage-top {
+  grid-area: top;
+}
+
+.usage-live {
+  padding: 1.2vmin 2.4vmin;
+  border-radius: 999px;
+  font-size: 3vmin;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #ff9f1c, #f4511e);
+  box-shadow: 0 0 2.4vmin rgba(255, 120, 30, 0.45);
+}
+
+.usage-tiles {
+  grid-area: tiles;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 1.6vmin;
+}
+
+.u-tile {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 2vmin 2vmin 1.8vmin;
+  border-radius: 3.2vmin;
+  color: #fff;
+  overflow: hidden;
+  box-shadow: 0 1vmin 2.6vmin rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* A soft highlight, like a sticker. */
+.u-tile::after {
+  content: "";
+  position: absolute;
+  right: -30%;
+  top: -40%;
+  width: 80%;
+  height: 90%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.u-heat {
+  background: linear-gradient(145deg, #ffb238 0%, #ff7a1a 45%, #e8461e 100%);
+}
+
+.u-gas {
+  background: linear-gradient(145deg, #4fc3ff 0%, #2a8cf0 50%, #1a4fc4 100%);
+}
+
+.u-leaf {
+  background: linear-gradient(145deg, #8fdc5a 0%, #43b649 50%, #1f8a3b 100%);
+}
+
+.u-badge {
+  width: 8.4vmin;
+  height: 8.4vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.6vmin 1.4vmin rgba(0, 0, 0, 0.22);
+}
+
+.u-badge svg {
+  width: 6vmin;
+  height: 6vmin;
+}
+
+.u-value {
+  margin-top: 1.4vmin;
+  font-size: 7.2vmin;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0.3vmin 1vmin rgba(0, 0, 0, 0.18);
+}
+
+.u-value small {
+  margin-left: 0.6vmin;
+  font-size: 3.4vmin;
+  font-weight: 600;
+  letter-spacing: 0;
+  opacity: 0.9;
+}
+
+.u-label {
+  margin-top: 0.8vmin;
+  font-size: 3vmin;
+  font-weight: 600;
+}
+
+.u-sub {
+  margin-top: 0.3vmin;
+  font-size: 2.5vmin;
+  font-weight: 500;
+  opacity: 0.88;
+  line-height: 1.25;
+}
+
+.usage-chart {
+  grid-area: chart;
+  position: relative;
+  min-height: 0;
+  border-radius: 3.2vmin;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.usage-chart svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+}
+
+.usage-legend {
+  position: absolute;
+  left: 2vmin;
+  top: 1vmin;
+  display: flex;
+  gap: 2vmin;
+  font-size: 2.5vmin;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8vmin;
+}
+
+.lg::before {
+  content: "";
+  width: 2.2vmin;
+  height: 2.2vmin;
+  border-radius: 0.6vmin;
+}
+
+.lg-gas::before {
+  background: linear-gradient(180deg, #6fd0ff, #1e6fe0);
+}
+
+.lg-run::before {
+  background: #ff8a1a;
+  border-radius: 999px;
+  height: 1.3vmin;
+}
+
+.lg-target::before {
+  height: 0;
+  border-top: 0.5vmin solid #fff;
+  border-radius: 0;
+}
+
+.u-grid {
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+
+.u-base {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1;
+}
+
+.u-run {
+  fill: #ff8a1a;
+  filter: drop-shadow(0 0 3px rgba(255, 120, 30, 0.8));
+}
+
+.u-run-tall {
+  fill: #ff8a1a;
+  opacity: 0.85;
+}
+
+.u-target {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.u-target-text {
+  fill: #fff;
+  font-weight: 700;
+}
+
+.u-chip {
+  fill: #23272d;
+  opacity: 0.92;
+}
+
+.u-note {
+  fill: var(--text);
+  font-weight: 600;
+}
+
+.u-axis {
+  fill: var(--text-muted);
+  font-weight: 600;
+}
+
+.u-now {
+  fill: var(--text);
+}
+
+.usage-week {
+  grid-area: week;
+  display: flex;
+  align-items: center;
+  gap: 2vmin;
+  padding: 1.4vmin 2.4vmin;
+  border-radius: 3.2vmin;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.week-days {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.6vmin;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4vmin;
+}
+
+.day-dot {
+  position: relative;
+  width: 7.2vmin;
+  height: 7.2vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.day-dot > svg:not(.day-ring) {
+  width: 4.4vmin;
+  height: 4.4vmin;
+}
+
+.week-day.earned .day-dot {
+  color: #fff;
+  background: linear-gradient(145deg, #8fdc5a, #2e9e40);
+  box-shadow: 0 0 1.6vmin rgba(67, 182, 73, 0.55);
+}
+
+.week-day.today .day-dot {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.week-day.today.earned .day-dot {
+  box-shadow: 0 0 0 0.5vmin rgba(255, 255, 255, 0.75), 0 0 1.6vmin rgba(67, 182, 73, 0.55);
+}
+
+.day-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.day-ring circle {
+  fill: none;
+  stroke: #6fd34a;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.day-letter {
+  font-size: 2.4vmin;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.week-day.today .day-letter {
+  color: var(--text);
+}
+
+.week-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 13vmin;
+}
+
+.streak-num {
+  font-size: 8vmin;
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(180deg, #b5f07e, #43b649);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.streak-label {
+  font-size: 2.4vmin;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Tall: more room for everything; tiles stay side by side. */
+@media (max-aspect-ratio: 4/5) {
+  .usage {
+    row-gap: 3vmin;
+    padding-bottom: 4vmin;
+  }
+
+  .u-tile {
+    padding: 3vmin 2.6vmin;
+  }
+
+  .u-value {
+    font-size: 8.4vmin;
+  }
+}
+
+/* Landscape: tiles in a column on the left, chart and week on the right. */
+@media (min-aspect-ratio: 5/4) {
+  .usage {
+    grid-template-columns: 50vmin minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top top"
+      "tiles chart"
+      "tiles week";
+    column-gap: 2.4vmin;
+  }
+
+  .usage-tiles {
+    grid-auto-flow: row;
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  .u-tile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    column-gap: 2.4vmin;
+    align-items: center;
+    align-content: center;
+  }
+
+  .u-badge {
+    grid-row: 1 / 4;
+  }
+
+  .u-value {
+    margin-top: 0;
+  }
+}
+
+/* —— Overlays / screensaver —— */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 30;
+  padding: 4vmin;
+}
+
+.error-card {
+  width: min(92vw, 520px);
+  background: #23272d;
+  border-radius: 3vmin;
+  padding: 4vmin;
+  box-shadow: 0 2vmin 5vmin rgba(0, 0, 0, 0.4);
+}
+
+.error-card h1 {
+  margin: 0 0 1.5vmin;
+  font-size: 4.4vmin;
+  font-weight: 600;
+}
+
+.error-card p,
+.error-card label {
+  margin: 0 0 2vmin;
+  color: var(--text-muted);
+  font-size: 3vmin;
+  line-height: 1.4;
+}
+
+.error-card input {
+  width: 100%;
+  margin-bottom: 2vmin;
+  padding: 2vmin;
+  border-radius: 1.5vmin;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 3vmin;
+}
+
+.error-card button {
+  display: block;
+  width: 100%;
+  margin-top: 1.5vmin;
+  padding: 2.4vmin;
+  border-radius: 999px;
+  background: var(--heat-soft);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 3.2vmin;
+}
+
+.error-card .secondary-link {
+  background: transparent;
+  color: var(--text-muted);
+  margin-top: 1vmin;
+}
+
+.device-pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vmin;
+  margin-bottom: 2vmin;
+  max-height: 40vmin;
+  overflow: auto;
+}
+
+.device-pick-list button {
+  text-align: left;
+  padding: 2.4vmin;
+  border-radius: 2vmin;
+  background: var(--surface-hi);
+  font-size: 3vmin;
+  color: var(--text);
+}
+
+.device-pick-list .id {
+  display: block;
+  font-size: 2.6vmin;
+  color: var(--text-muted);
+}
+
+.pin-display {
+  font-size: 8vmin;
+  letter-spacing: 0.35em;
+  text-align: center;
+  margin: 1.5vmin 0 3vmin;
+  font-weight: 600;
+}
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.8vmin;
+}
+
+.pin-pad button {
+  min-height: 11vmin;
+  margin: 0;
+  border-radius: 2.4vmin;
+  background: var(--surface-hi);
+  color: var(--text);
+  font-size: 4.6vmin;
+  font-weight: 500;
+  padding: 0;
+}
+
+.pin-pad button[data-digit="ok"] {
+  background: var(--teal);
+  color: #062226;
+}
+
+.pin-error {
+  color: var(--red);
+  text-align: center;
+  margin: 2vmin 0 0;
+}
+
+.screensaver {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1.5vmin;
+  background: #0b0d10;
+  color: white;
+  z-index: 20;
+}
+
+.screensaver-time {
+  font-size: 22vmin;
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.screensaver-date {
+  font-size: 4.4vmin;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.screensaver-hint {
+  margin-top: 4vmin;
+  font-size: 2.8vmin;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* —— Room settings: the cog under the chips in a room view, and its page —— */
+.top {
+  position: relative;
+}
+
+/* Under the humidity chip, in the empty corner beside the arc (it doesn't take a row). */
+.top-cog {
+  position: absolute;
+  top: calc(100% + 1.4vmin);
+  right: 0;
+  z-index: 2;
+  width: 10vmin;
+  height: 10vmin;
+  display: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.app.room-view .top-cog {
+  display: grid;
+}
+
+.top-cog svg {
+  width: 5.4vmin;
+  height: 5.4vmin;
+}
+
+.top-cog:active {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+/* Landscape: the rooms column sits under the chips, so the cog joins the header row. */
+@media (min-aspect-ratio: 5/4) {
+  .top-cog {
+    position: static;
+    flex-shrink: 0;
+  }
+}
+
+.room-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 15; /* over the dial and usage, under the screensaver and PIN pad */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "top" "body";
+  padding: 3vmin 3.2vmin 0;
+  background: linear-gradient(180deg, var(--bg-hi), var(--bg));
+}
+
+.room-settings[hidden] {
+  display: none;
+}
+
+.rs-body {
+  grid-area: body;
+  width: 100%;
+  max-width: 150vmin; /* landscape: rows no wider than they need */
+  justify-self: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  /* Scrolled by finger (or wheel): no bar, like the room strip. */
+  scrollbar-width: none;
+  padding: 2vmin 0 12vmin;
+}
+
+.rs-body::-webkit-scrollbar {
+  display: none;
+}
+
+.rs-section {
+  margin-bottom: 3vmin;
+}
+
+.rs-title {
+  margin: 1.2vmin 0.8vmin 1.6vmin;
+  font-size: 2.8vmin;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rs-row {
+  width: 100%;
+  min-height: 14vmin;
+  display: flex;
+  align-items: center;
+  gap: 2.4vmin;
+  padding: 2vmin 2.6vmin;
+  margin-bottom: 1.4vmin;
+  border-radius: 3vmin;
+  background: var(--surface);
+  text-align: left;
+}
+
+.rs-row:disabled,
+.rs-row [disabled] {
+  opacity: 0.45;
+}
+
+.rs-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vmin;
+}
+
+.rs-name {
+  font-size: 3.6vmin;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rs-desc,
+.rs-label {
+  font-size: 2.8vmin;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.rs-note {
+  margin: 0 0.8vmin 1.6vmin;
+  font-size: 3vmin;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.rs-note.warn {
+  color: var(--amber);
+}
+
+/* Whole row is the toggle; the switch only shows the state. */
+.rs-toggle:active {
+  background: var(--surface-hi);
+}
+
+.rs-switch {
+  flex-shrink: 0;
+  position: relative;
+  width: 13vmin;
+  height: 7.4vmin;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.15s ease;
+}
+
+.rs-switch span {
+  position: absolute;
+  top: 0.8vmin;
+  left: 0.8vmin;
+  width: 5.8vmin;
+  height: 5.8vmin;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.4vmin 1vmin rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.rs-toggle.on .rs-switch {
+  background: var(--teal);
+}
+
+.rs-toggle.on .rs-switch span {
+  transform: translateX(5.6vmin);
+}
+
+.rs-steps {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.6vmin;
+}
+
+.rs-step {
+  width: 11vmin;
+  height: 11vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-hi);
+  box-shadow: inset 0 0 0 1px var(--line);
+  touch-action: none; /* held for repeat, not a scroll */
+  transition: transform 0.08s ease;
+}
+
+.rs-step svg {
+  width: 5.4vmin;
+  height: 5.4vmin;
+}
+
+.rs-step:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.rs-value {
+  min-width: 15vmin;
+  text-align: center;
+  font-size: 4.6vmin;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-field {
+  padding: 2vmin 2.6vmin 1vmin;
+  margin-bottom: 1.4vmin;
+  border-radius: 3vmin;
+  background: var(--surface);
+}
+
+.rs-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vmin;
+  margin: 1.6vmin 0 1vmin;
+}
+
+.rs-choice {
+  min-height: 11vmin;
+  display: flex;
+  align-items: center;
+  gap: 2vmin;
+  padding: 0 2.4vmin;
+  border-radius: 2.4vmin;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 3.3vmin;
+  text-align: left;
+}
+
+.rs-choice.on {
+  background: var(--tint-wash);
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
+
+.rs-radio {
+  flex-shrink: 0;
+  width: 5.6vmin;
+  height: 5.6vmin;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.rs-choice.on .rs-radio {
+  background: var(--teal);
+  box-shadow: none;
+  color: #062226;
+}
+
+.rs-radio svg {
+  width: 4vmin;
+  height: 4vmin;
+}
+
+.rs-press {
+  flex-shrink: 0;
+  min-width: 22vmin;
+  min-height: 10vmin;
+  padding: 0 3.6vmin;
+  border-radius: 999px;
+  background: var(--surface-hi);
+  font-size: 3.3vmin;
+  font-weight: 600;
+}
+
+.rs-press:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.rs-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 4vmin;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  padding: 2vmin 4vmin;
+  border-radius: 999px;
+  background: #2c3138;
+  box-shadow: 0 1vmin 3vmin rgba(0, 0, 0, 0.45);
+  font-size: 3vmin;
+  text-align: center;
+}
+
+.rs-toast.bad {
+  background: rgba(239, 83, 80, 0.92);
+}

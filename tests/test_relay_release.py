@@ -9,16 +9,16 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.models import NeatConfig  # noqa: E402
+from custom_components.nook.models import NookConfig  # noqa: E402
 from tests.test_schedule_ha import MONDAY, _tick, setup  # noqa: E402,F401
 
 START = datetime.fromisoformat(f"{MONDAY}T16:10:00+01:00")
 
 
 def test_min_on_off_never_zero_or_huge():
-    cfg = NeatConfig.from_entry_data({"min_on_minutes": 0, "min_off_minutes": 99})
+    cfg = NookConfig.from_entry_data({"min_on_minutes": 0, "min_off_minutes": 99})
     assert (cfg.min_on_minutes, cfg.min_off_minutes) == (1.0, 30.0)
-    assert NeatConfig.from_entry_data({}).min_on_minutes == 3.0
+    assert NookConfig.from_entry_data({}).min_on_minutes == 3.0
 
 
 async def test_released_relay_is_left_alone_then_taken_back(hass, setup, freezer):
@@ -31,7 +31,7 @@ async def test_released_relay_is_left_alone_then_taken_back(hass, setup, freezer
     assert coord.intel.state.control["released_until"] == until
     calls.clear()
 
-    # Hand test: switch the relay off. Neat must not switch it back.
+    # Hand test: switch the relay off. Nook must not switch it back.
     freezer.move_to(START + timedelta(minutes=5))
     hass.states.async_set("switch.boiler", "off")
     data = await _tick(hass, coord)
@@ -40,7 +40,7 @@ async def test_released_relay_is_left_alone_then_taken_back(hass, setup, freezer
     assert not [c for c in calls if c[0] == "switch"]
     assert coord._heat_cycle_start is None  # noqa: SLF001 — nothing learned from a test
 
-    # An hour later Neat takes it back by itself.
+    # An hour later Nook takes it back by itself.
     freezer.move_to(START + timedelta(minutes=61))
     data = await _tick(hass, coord)
     assert data["control_released_until"] is None

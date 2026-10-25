@@ -10,8 +10,8 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.coordinator import (  # noqa: E402
-    NeatThermostatCoordinator,
+from custom_components.nook.coordinator import (  # noqa: E402
+    NookCoordinator,
 )
 from tests.test_schedule_ha import MONDAY, _tick, setup  # noqa: E402,F401
 
@@ -32,7 +32,7 @@ async def test_run_survives_a_restart(hass, setup, freezer):
     await coord.intel.async_save()
 
     # HA restarts: a brand-new coordinator loads what was saved.
-    fresh = NeatThermostatCoordinator(hass, coord.entry)
+    fresh = NookCoordinator(hass, coord.entry)
     await fresh.async_initialize_intelligence()
     try:
         # 20.0 is above the cut-in (19.7): only a remembered run keeps going to 20.3.
@@ -55,7 +55,7 @@ async def test_stale_run_is_dropped(hass, setup, freezer):
     await coord.intel.async_save()
     # Down for a day: whatever happened to that run, it can't be learned from.
     freezer.move_to(START + timedelta(days=1))
-    fresh = NeatThermostatCoordinator(hass, coord.entry)
+    fresh = NookCoordinator(hass, coord.entry)
     await fresh.async_initialize_intelligence()
     try:
         assert fresh._heat_cycle_start is None  # noqa: SLF001

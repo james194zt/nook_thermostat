@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nook",
+        "description": "Choose the boiler/heater switch and the house temperature sensor. Add rooms and wall panels from the Nook sidebar after setup.",
+        "data": {
+          "heater": "Heater / boiler entity",
+          "temperature_sensor": "House temperature sensor",
+          "window_sensors": "Window sensors (optional)",
+          "person_entity": "Person for Away mode (optional)",
+          "eco_temp": "Eco temperature",
+          "boost_temp": "Boost temperature",
+          "away_temp": "Away temperature",
+          "target_temp": "Default target temperature"
+        }
+      },
+      "import_old": {
+        "title": "Import from Neat Thermostat",
+        "description": "Neat Thermostat (this integration's old name) is installed. Nook will copy its settings, move its heating entities to Nook's names (their history comes too) and, once you remove Neat Thermostat, take over with its learned data. Nook won't control the heating until then."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Nook instance is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nook options",
+        "description": "Prefer the Nook sidebar for rooms, schedule, and wall panels. Use this form for quick tweaks or to add one room.",
+        "data": {
+          "window_sensors": "Window sensors",
+          "person_entity": "Person for Away",
+          "eco_temp": "Eco temperature",
+          "boost_temp": "Boost temperature",
+          "away_temp": "Away temperature",
+          "summer_mode": "Summer mode",
+          "schedule_enabled": "Schedule enabled",
+          "add_room_name": "Add room — name",
+          "add_room_trv": "Add room — TRV climate",
+          "add_room_sensor": "Add room — temperature sensor (optional)"
+        }
+      }
+    }
+  }
+}

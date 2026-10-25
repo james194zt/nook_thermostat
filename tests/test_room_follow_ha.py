@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("pytest_homeassistant_custom_component")
 
-from custom_components.neat_thermostat.models import RoomConfig  # noqa: E402
+from custom_components.nook.models import RoomConfig  # noqa: E402
 from tests.test_schedule_ha import MONDAY, _room_target, _tick, setup  # noqa: E402,F401
 
 # Default schedule, Monday: comfort 06:30–08:30 and 16:00–22:00 at 20 °C, Eco 16 °C otherwise.
