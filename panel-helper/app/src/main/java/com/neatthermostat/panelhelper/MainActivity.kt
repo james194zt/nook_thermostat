@@ -55,15 +55,15 @@ class MainActivity : Activity() {
 
     private fun render() {
         body.removeAllViews()
-        text("Neat Panel Helper", 22f, bold = true)
+        text("Nook Panel Helper", 22f, bold = true)
         text("Version ${BuildConfig.VERSION_NAME} · ${if (HelperService.running) "running" else "starting…"}", 14f, muted = true)
 
         gap()
-        text("Pair with Neat", 16f, bold = true)
+        text("Pair with Nook", 16f, bold = true)
         if (prefs.apiKey.isNotEmpty()) {
-            text("Paired. To pair again, use this code in Neat:", 14f, muted = true)
+            text("Paired. To pair again, use this code in Nook:", 14f, muted = true)
         } else {
-            text("In Neat: Wall panels → this panel → Sonoff NSPanel Pro → Pair, and enter:", 14f, muted = true)
+            text("In Nook: Wall panels → this panel → Sonoff NSPanel Pro → Pair, and enter:", 14f, muted = true)
         }
         text(prefs.pairingCode.chunked(3).joinToString(" "), 40f, bold = true, colour = "#19D4DE")
         text("Panel address: ${ip()}:${StatusServer.PORT}", 14f, muted = true)
@@ -73,10 +73,10 @@ class MainActivity : Activity() {
         gap()
         text("One-time setup", 16f, bold = true)
         if (missing.isEmpty() && owner) {
-            text("All set. Neat keeps this helper up to date.", 14f, colour = "#52C41A")
+            text("All set. Nook keeps this helper up to date.", 14f, colour = "#52C41A")
         }
         if (!owner) {
-            text("For silent updates from Neat (needs no accounts on the panel):", 14f, muted = true)
+            text("For silent updates from Nook (needs no accounts on the panel):", 14f, muted = true)
             text("adb shell dpm set-device-owner $packageName/.AdminReceiver", 12f, mono = true)
         }
         if (missing.isNotEmpty()) {

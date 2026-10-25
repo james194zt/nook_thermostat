@@ -21,7 +21,7 @@ import kotlin.concurrent.thread
  * itself afterwards (MY_PACKAGE_REPLACED).
  */
 object Updater {
-    private const val TAG = "NeatUpdater"
+    private const val TAG = "NookUpdater"
     @Volatile private var busy = false
 
     fun start(context: Context, url: String, sha256: String, versionCode: Long): JSONObject {
@@ -62,7 +62,7 @@ object Updater {
         conn.connectTimeout = 15_000
         conn.readTimeout = 60_000
         try {
-            if (conn.responseCode != 200) throw IllegalStateException("HTTP ${conn.responseCode} from Neat")
+            if (conn.responseCode != 200) throw IllegalStateException("HTTP ${conn.responseCode} from Nook")
             conn.inputStream.use { input -> out.outputStream().use { input.copyTo(it) } }
         } finally {
             conn.disconnect()

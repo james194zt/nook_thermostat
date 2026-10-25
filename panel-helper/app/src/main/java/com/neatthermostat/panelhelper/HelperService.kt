@@ -165,7 +165,7 @@ class HelperService : Service() {
             guard.enforce("settings changed")
             status()
         }
-        method == "POST" && path == "/guard/apply" -> JSONObject().put("changed", guard.enforce("asked by Neat")).put("guard", guard.status())
+        method == "POST" && path == "/guard/apply" -> JSONObject().put("changed", guard.enforce("asked by Nook")).put("guard", guard.status())
         method == "POST" && path == "/fully/launch" -> JSONObject().put("launched", launchFully())
         method == "POST" && path == "/update" -> Updater.start(
             this, body.getString("url"), body.getString("sha256"), body.getLong("version_code"),
@@ -218,10 +218,10 @@ class HelperService : Service() {
     private fun notification(): Notification {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Neat Panel Helper", NotificationManager.IMPORTANCE_MIN),
+            NotificationChannel(CHANNEL, "Nook Panel Helper", NotificationManager.IMPORTANCE_MIN),
         )
         return Notification.Builder(this, CHANNEL)
-            .setContentTitle("Neat Panel Helper")
+            .setContentTitle("Nook Panel Helper")
             .setContentText("Keeping the panel ready")
             .setSmallIcon(R.drawable.ic_helper)
             .setOngoing(true)
@@ -229,7 +229,7 @@ class HelperService : Service() {
     }
 
     companion object {
-        private const val TAG = "NeatHelper"
+        private const val TAG = "NookHelper"
         private const val CHANNEL = "helper"
         private const val NOTIFICATION_ID = 1
         const val FULLY = "de.ozerov.fully"

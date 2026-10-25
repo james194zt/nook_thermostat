@@ -130,6 +130,6 @@ class StatusServer(
 
     companion object {
         const val PORT = 2424
-        private const val TAG = "NeatServer"
+        private const val TAG = "NookServer"
     }
 }

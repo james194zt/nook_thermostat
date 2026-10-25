@@ -126,6 +126,6 @@ class AccessibilityGuard(private val context: Context, private val prefs: Helper
     }
 
     companion object {
-        private const val TAG = "NeatGuard"
+        private const val TAG = "NookGuard"
     }
 }

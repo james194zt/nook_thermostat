@@ -14,8 +14,8 @@ android {
         // Sideloaded, never on the Play Store: target 30 keeps the background rules the
         // panel's Android 11 actually enforces (no foreground-service types needed).
         targetSdk = 30
-        versionCode = 4
-        versionName = "0.2.1"
+        versionCode = 5
+        versionName = "0.2.2"
     }
 
     signingConfigs {

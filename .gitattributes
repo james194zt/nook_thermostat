@@ -1,0 +1,9 @@
+# Binary files must never be touched by line-ending conversion (the panel helper APK
+# was stored damaged for this reason, 14–25 Oct 2026).
+*.apk binary
+*.jks binary
+*.woff2 binary
+*.woff binary
+*.png binary
+*.jpg binary
+*.ico binary
