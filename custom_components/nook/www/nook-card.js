@@ -1273,7 +1273,7 @@ if (!window.customCards.some((c) => c.type === "nook-card")) {
     name: "Nook",
     description: "Dial with setpoint control, modes, status and rooms for Nook.",
     preview: true,
-    documentationURL: "https://github.com/james194zt/nook",
+    documentationURL: "https://github.com/james194zt/nook_thermostat",
   });
 }
 if (!window.customCards.some((c) => c.type === "nook-radiators-card")) {
@@ -1282,7 +1282,7 @@ if (!window.customCards.some((c) => c.type === "nook-radiators-card")) {
     name: "Nook Radiators",
     description: "Every Nook room's radiator / TRV: setpoint, Heat/Off, Eco/Boost and TRV status (online, battery, valve).",
     preview: true,
-    documentationURL: "https://github.com/james194zt/nook",
+    documentationURL: "https://github.com/james194zt/nook_thermostat",
   });
 }
 console.info(`%c NOOK-CARD %c ${NOOK_CARD_VERSION} `, "color:#fff;background:#08979C;border-radius:3px 0 0 3px", "color:#08979C;background:#e6f7f7;border-radius:0 3px 3px 0");

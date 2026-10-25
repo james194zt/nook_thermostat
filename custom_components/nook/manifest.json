@@ -5,10 +5,10 @@
   "config_flow": true,
   "dependencies": ["http", "frontend"],
   "after_dependencies": ["panel_custom"],
-  "documentation": "https://github.com/james194zt/nook",
+  "documentation": "https://github.com/james194zt/nook_thermostat",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/james194zt/nook/issues",
+  "issue_tracker": "https://github.com/james194zt/nook_thermostat/issues",
   "requirements": [],
   "version": "0.7.0"
 }

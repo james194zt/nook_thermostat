@@ -14,7 +14,7 @@ Home Assistant custom integration that replaces Better Thermostat-style heating 
 
 ### HACS (recommended)
 
-1. HACS → Integrations → Custom repositories → add `https://github.com/james194zt/nook` (category: Integration)
+1. HACS → Integrations → Custom repositories → add `https://github.com/james194zt/nook_thermostat` (category: Integration)
 2. Install **Nook**
 3. Restart Home Assistant
 4. Settings → Devices & services → Add integration → **Nook**
