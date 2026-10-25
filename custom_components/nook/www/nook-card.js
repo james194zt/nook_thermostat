@@ -3,7 +3,7 @@
  * Loaded automatically by the integration; pick "Nook" in the card list.
  * Everything comes from the Nook climate entities, so it updates live with no polling.
  */
-const NOOK_CARD_VERSION = "0.7.1";
+const NOOK_CARD_VERSION = "0.7.2";
 
 const NC_STYLES = `
 :host { display: block; }
@@ -198,8 +198,8 @@ class NookCard extends HTMLElement {
   }
 
   get _entityId() {
-    // A configured entity that no longer exists (e.g. renamed when Neat became Nook) falls back
-    // to Nook's house climate rather than showing an empty card.
+    // A configured entity that no longer exists (deleted or renamed) falls back to Nook's
+    // house climate rather than showing an empty card.
     const configured = this._config?.entity;
     if (configured && (!this._hass || this._hass.states[configured])) return configured;
     return ncFindHome(this._hass) || configured || "";
@@ -1238,10 +1238,6 @@ const NC_ELEMENTS = {
   "nook-card-editor": NookCardEditor,
   "nook-radiators-card": NookRadiatorsCard,
   "nook-radiators-card-editor": NookRadiatorsCardEditor,
-  // Card types from before the rename (Neat), so existing dashboards keep working.
-  // An element class can only be registered once, hence the subclasses.
-  "neat-thermostat-card": class extends NookCard {},
-  "neat-radiators-card": class extends NookRadiatorsCard {},
 };
 
 function ncDefineElements() {

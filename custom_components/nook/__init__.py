@@ -33,53 +33,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-async def _async_import_from_old(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Moving from the integration's old name: wait while it's still configured,
-    copy its learned data once it has gone. See migrate.py."""
-    from homeassistant.components import persistent_notification
-    from homeassistant.exceptions import ConfigEntryNotReady
-
-    from . import migrate
-
-    old_id = entry.data.get(migrate.IMPORTED_FROM)
-    if not old_id:
-        return
-    old = hass.config_entries.async_get_entry(old_id)
-    if old is not None:
-        mapping = {**(entry.data.get(migrate.RENAMED) or {}), **migrate.rename_old_entities(hass)}
-        data, options = migrate.imported_config(old, mapping)
-        # Keep Nook's copy current while the old one still runs (it follows the renames).
-        hass.config_entries.async_update_entry(
-            entry, data={**data, migrate.STORES_IMPORTED: False}, options=options
-        )
-        persistent_notification.async_create(
-            hass,
-            "Nook has copied your settings and moved your heating entities to their new names. "
-            "To finish, remove the old **Neat Thermostat** integration (Settings → Devices & services). "
-            "Nook won't control the heating until then, so two controllers never fight over the boiler; "
-            "it takes over within a minute or two of the removal, with your learned data.",
-            title="Nook: one step left",
-            notification_id=migrate.NOTIFICATION_ID,
-        )
-        raise ConfigEntryNotReady("waiting for the old Neat Thermostat integration to be removed")
-    if not entry.data.get(migrate.STORES_IMPORTED):
-        copied = await migrate.async_copy_stores(hass, old_id, entry.entry_id)
-        _LOGGER.info("Nook: took over from Neat Thermostat (copied %s)", ", ".join(copied) or "nothing")
-        hass.config_entries.async_update_entry(entry, data={**entry.data, migrate.STORES_IMPORTED: True})
-        persistent_notification.async_create(
-            hass,
-            "Nook is now running your heating, with your settings and learned data. "
-            "You can remove Neat Thermostat from HACS too.",
-            title="Nook has taken over",
-            notification_id=migrate.NOTIFICATION_ID,
-        )
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .coordinator import NookCoordinator
     from .panel import async_register_panel
 
-    await _async_import_from_old(hass, entry)
     coordinator = NookCoordinator(hass, entry)
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}

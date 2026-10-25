@@ -48,8 +48,7 @@ async def async_setup_entry(
     coordinator: NookCoordinator = hass.data[DOMAIN][entry.entry_id][
         "coordinator"
     ]
-    # Fixed entity ids (climate.nook_home, climate.nook_<room>): the move from the old name
-    # renames the old entities to exactly these, so their history carries on.
+    # Fixed entity ids (climate.nook_home, climate.nook_<room>), whatever the entity names say.
     registry = er.async_get(hass)
     for unique_id in ["nook_home", *(f"nook_{room.id}" for room in coordinator.config.rooms)]:
         registry.async_get_or_create(

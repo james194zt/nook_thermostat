@@ -20,7 +20,6 @@ from .const import (
     DOMAIN,
     HEATER_DOMAINS,
 )
-from . import migrate
 from .models import RoomConfig, default_schedule
 
 
@@ -61,8 +60,6 @@ class NookConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
-        if migrate.old_entry(self.hass) is not None:
-            return await self.async_step_import_old()
 
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -106,18 +103,6 @@ class NookConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
-
-    async def async_step_import_old(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        """Neat Thermostat (the old name) is installed: bring everything across."""
-        old = migrate.old_entry(self.hass)
-        if old is None:
-            return await self.async_step_user()
-        if user_input is None:
-            return self.async_show_form(step_id="import_old", data_schema=vol.Schema({}))
-        data, options = migrate.imported_config(old, migrate.rename_old_entities(self.hass))
-        return self.async_create_entry(title="Nook", data=data, options=options)
 
     @staticmethod
     @callback

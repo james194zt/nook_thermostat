@@ -14,10 +14,6 @@
           "away_temp": "Away temperature",
           "target_temp": "Default target temperature"
         }
-      },
-      "import_old": {
-        "title": "Import from Neat Thermostat",
-        "description": "Neat Thermostat (this integration's old name) is installed. Nook will copy its settings, move its heating entities to Nook's names (their history comes too) and, once you remove Neat Thermostat, take over with its learned data. Nook won't control the heating until then."
       }
     },
     "abort": {
