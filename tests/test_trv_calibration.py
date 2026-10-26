@@ -135,7 +135,7 @@ async def test_hall_trv_gets_room_sensor_offset(hass, setup, freezer):
     coord = await make()
     await _run(hass, coord, freezer, 14)  # no 15-min view of the room sensor yet
     assert trv["writes"] == []
-    await _run(hass, coord, freezer, 2)
+    await _run(hass, coord, freezer, 3)  # the setpoint margin goes first, the offset next tick
     assert trv["writes"] == [-2.3]
 
 
@@ -149,7 +149,7 @@ async def test_off_by_default_and_needs_a_room_sensor(hass, setup, freezer):
 async def test_waits_for_a_trv_reading_with_the_new_offset(hass, setup, freezer):
     make, trv = setup
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-2.3]
     # The TRV hasn't reported since: its 21.3 was taken with the old offset.
     await _run(hass, coord, freezer, 20)
@@ -161,7 +161,7 @@ async def test_waits_for_a_trv_reading_with_the_new_offset(hass, setup, freezer)
     hass.states.async_set(ROOM_SENSOR, "20.4")
     trv["raw"] = 20.5
     trv["report"]()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-2.3, -0.1]
 
 
@@ -172,7 +172,7 @@ async def test_offset_only_moves_down_while_the_room_warms_up(hass, setup, freez
     trv["raw"] = 20.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     trv["report"]()
     assert trv["writes"] == [-1.5]
     trv["raw"] = 19.5  # radiator cool: TRV now shows 18.0, room 19.0, target 20
@@ -190,7 +190,7 @@ async def test_downward_corrections_come_quicker_while_warming(hass, setup, free
     trv["raw"] = 20.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-1.5]
     trv["report"]()
     trv["raw"] = 21.5  # radiator heating up: shows 20.0, room 19.0
@@ -215,9 +215,9 @@ async def test_offset_stays_inside_the_trv_range(hass, setup, freezer):
     trv["raw"] = 23.0  # 4 °C above the room; the TRV only allows −2.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     trv["report"]()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-2.5]
 
 
@@ -246,7 +246,7 @@ async def test_a_positive_offset_is_brought_back_to_zero(hass, setup, freezer):
     trv["raw"] = 17.5
     trv["report"]()  # shows 20.0
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [0.0]
 
 
@@ -258,13 +258,13 @@ async def test_setpoint_topped_up_beyond_the_offset_limit(hass, setup, freezer):
     trv["raw"] = 23.5  # shows 21.0: 3.0 above the room even at −2.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
-    assert trv["setpoint"] == 23.0
+    await _run(hass, coord, freezer, 17)
+    assert trv["setpoint"] == 25.0  # 3.0 over the room at −2.5, + the 2.0 margin
     assert trv["writes"] == []  # the offset is already as low as it goes
     trv["raw"] = 22.5  # over-read shrinks: the top-up doesn't (no churn mid warm-up)
     trv["report"]()
     await _run(hass, coord, freezer, 3)
-    assert trv["setpoint"] == 23.0
+    assert trv["setpoint"] == 25.0
     hass.states.async_set(ROOM_SENSOR, "20.4")  # past the room's cut-out: back to the real setpoint
     await _run(hass, coord, freezer, 1)
     assert trv["setpoint"] == 20.0
@@ -279,8 +279,8 @@ async def test_top_up_follows_the_rooms_own_call(hass, setup, freezer):
     trv["raw"] = 23.5  # shows 21.0
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
-    assert trv["setpoint"] == 22.0  # TRV 21.0 vs room 19.0 → +2.0
+    await _run(hass, coord, freezer, 17)
+    assert trv["setpoint"] == 24.0  # TRV 21.0 vs room 19.0 → +2.0, + margin
     hass.states.async_set(ROOM_SENSOR, "20.1")  # at target, still inside the room's call
     await _run(hass, coord, freezer, 2)
     assert coord._room_states["hall"]["needs_heat"]  # noqa: SLF001
@@ -292,8 +292,23 @@ async def test_top_up_follows_the_rooms_own_call(hass, setup, freezer):
     await _run(hass, coord, freezer, 2)
     assert trv["setpoint"] == 20.0  # no top-up yet: no reopening at 19.9
     hass.states.async_set(ROOM_SENSOR, "19.6")  # cut-in
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["setpoint"] > 20.0
+
+
+async def test_margin_keeps_the_valve_open_until_the_room_is_there(hass, setup, freezer):
+    """26 Oct live: the hall's valve eased off as the room neared target (setpoint only just
+    above what matched the room) and the last 0.6 °C took over an hour."""
+    make, trv = setup
+    trv["raw"] = 19.0  # TRV reads the room exactly: nothing for the offset to correct
+    trv["report"]()
+    coord = await make()
+    await _run(hass, coord, freezer, 17)
+    assert trv["writes"] == []
+    assert trv["setpoint"] == 22.0  # target 20 + 2.0 margin while the room warms
+    hass.states.async_set(ROOM_SENSOR, "20.4")  # cut-out: back to the real setpoint
+    await _run(hass, coord, freezer, 1)
+    assert trv["setpoint"] == 20.0
 
 
 async def test_top_up_is_capped(hass, setup, freezer):
@@ -303,8 +318,8 @@ async def test_top_up_is_capped(hass, setup, freezer):
     trv["raw"] = 27.5  # 8.0 above the room at −2.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
-    assert trv["setpoint"] == 26.0  # +6 at most
+    await _run(hass, coord, freezer, 17)
+    assert trv["setpoint"] == 28.0  # +6 at most, + the 2.0 margin
 
 
 async def test_top_up_covers_a_hot_radiator(hass, setup, freezer):
@@ -316,8 +331,8 @@ async def test_top_up_covers_a_hot_radiator(hass, setup, freezer):
     trv["raw"] = 25.0  # 5.5 above the room at −2.5
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
-    assert trv["setpoint"] == 25.5  # the whole 5.5 (was capped at 23.0)
+    await _run(hass, coord, freezer, 17)
+    assert trv["setpoint"] == 27.5  # the whole 5.5 (was capped at +3), + the margin
 
 
 async def test_no_top_up_while_the_offset_can_still_correct(hass, setup, freezer):
@@ -325,7 +340,7 @@ async def test_no_top_up_while_the_offset_can_still_correct(hass, setup, freezer
     coord = await make()
     await _run(hass, coord, freezer, 30)
     assert trv["writes"] == [-2.3]
-    assert all(s <= 20.0 for s in trv["setpoints"])
+    assert all(s <= 22.0 for s in trv["setpoints"])  # only the 2.0 margin
 
 
 async def test_no_top_up_without_calibration(hass, setup, freezer):
@@ -347,11 +362,11 @@ async def test_last_step_onto_the_limit_is_taken(hass, setup, freezer):
     trv["raw"] = 23.2  # shows 21.0 with the room at 19.0
     trv["report"]()
     coord = await make()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-2.5]
     trv["report"]()
     await _run(hass, coord, freezer, 2)
-    assert trv["setpoint"] == 22.0  # then the top-up covers the rest (20.7 vs 19.0 → +2.0)
+    assert trv["setpoint"] == 24.0  # then the top-up covers the rest (20.7 vs 19.0 → +2.0) + margin
 
 
 async def test_a_quick_warm_up_still_calibrates(hass, setup, freezer):
@@ -375,12 +390,12 @@ async def test_house_sensor_room_keeps_its_top_up_while_the_house_calls(hass, se
     trv["raw"] = 23.5  # shows 21.0
     trv["report"]()
     coord = await make(sensor="sensor.house")  # the hall: its room sensor IS the house sensor
-    await _run(hass, coord, freezer, 16)
-    assert trv["setpoint"] == 22.0
+    await _run(hass, coord, freezer, 17)
+    assert trv["setpoint"] == 24.0  # 2.0 over the room at −2.5, + the 2.0 margin
     hass.states.async_set("sensor.house", "20.0")  # at target, short of the house cut-off
     await _run(hass, coord, freezer, 3)
     assert coord._house_calling  # noqa: SLF001
-    assert trv["setpoint"] == 22.0  # stays open while the house still wants heat
+    assert trv["setpoint"] == 24.0  # stays open while the house still wants heat
     hass.states.async_set("sensor.house", "20.4")  # past the cut-off: house stops
     await _run(hass, coord, freezer, 2)
     assert not coord._house_calling  # noqa: SLF001
@@ -402,5 +417,5 @@ async def test_settling_room_sensor_is_ignored(hass, setup, freezer):
     hass.states.async_set(ROOM_SENSOR, "19.0")
     trv["raw"] = 21.3  # warm-up starts with the sensor now steady at 19.0
     trv["report"]()
-    await _run(hass, coord, freezer, 16)
+    await _run(hass, coord, freezer, 17)
     assert trv["writes"] == [-2.3]

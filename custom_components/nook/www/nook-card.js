@@ -3,7 +3,7 @@
  * Loaded automatically by the integration; pick "Nook" in the card list.
  * Everything comes from the Nook climate entities, so it updates live with no polling.
  */
-const NOOK_CARD_VERSION = "0.7.2";
+const NOOK_CARD_VERSION = "0.7.3";
 
 const NC_STYLES = `
 :host { display: block; }

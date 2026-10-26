@@ -130,6 +130,9 @@ CALIBRATE_SETTLING_WINDOW = timedelta(minutes=15)
 # 24 Oct: +3 ran out — hot radiators made the hall (23 Oct) and living-room front
 # (24 Oct) TRVs read ~5.7–6 °C over the room even at −2.5.
 TRV_TOPUP_MAX = 6.0
+# Added while the room warms (26 Oct: the hall's valve eased off near target and the last
+# 0.6 °C took over an hour — the boiler ran 2 h 53 min and upstairs reached 25 °C).
+TRV_TOPUP_MARGIN = 2.0
 CALIBRATE_WAIT_FOR_TRV = timedelta(minutes=60)
 # A "run" longer than this (e.g. HA was down while it ended) teaches nothing.
 MAX_LEARN_RUN_HOURS = 6
@@ -1310,17 +1313,19 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             trv_temp = float(trv.attributes.get("current_temperature"))
         except (AttributeError, TypeError, ValueError):
             return extra
-        if offset <= lo + 0.05 and self._room_sensor_settled(room.id, room_temp):
+        if self._room_sensor_settled(room.id, room_temp):
             step = float(trv.attributes.get("target_temp_step") or 0.5)
-            residual = trv_temp - room_temp
-            if residual > 0:
-                wanted = min(TRV_TOPUP_MAX, math.ceil(residual / step - 1e-9) * step)
-                if wanted > extra:
-                    _LOGGER.info(
-                        "Nook: %s reads %.1f °C at its %.1f offset limit, room %.1f °C — setpoint +%.1f",
-                        room.trv_entity, trv_temp, lo, room_temp, wanted,
-                    )
-                    extra = wanted
+            # What the offset can't correct (only once it's at its limit) …
+            residual = max(0.0, trv_temp - room_temp) if offset <= lo + 0.05 else 0.0
+            # … plus a margin: TRVs open in proportion to (setpoint − reading), so a setpoint
+            # that only just matches the room lets the valve close down as the room nears target.
+            wanted = min(TRV_TOPUP_MAX, math.ceil(residual / step - 1e-9) * step) + TRV_TOPUP_MARGIN
+            if wanted > extra:
+                _LOGGER.info(
+                    "Nook: %s reads %.1f °C (offset %.1f), room %.1f °C — setpoint +%.1f while it warms",
+                    room.trv_entity, trv_temp, offset, room_temp, wanted,
+                )
+                extra = wanted
         if extra > 0:
             self._trv_topups[room.id] = extra
         return extra

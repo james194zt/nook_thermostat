@@ -1,9 +1,9 @@
 /**
  * Nook — HA sidebar panel.
  * Fox Plant–style shell + dial overview / schedule.
- * @version 0.7.2
+ * @version 0.7.3
  */
-const PANEL_VERSION = "0.7.2";
+const PANEL_VERSION = "0.7.3";
 
 /* —— Labels ——
    Every word the panel shows comes from a language file (www/i18n/<lang>.json, keys like
