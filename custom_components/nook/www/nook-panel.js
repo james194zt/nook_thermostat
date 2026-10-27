@@ -1,9 +1,9 @@
 /**
  * Nook — HA sidebar panel.
  * Fox Plant–style shell + dial overview / schedule.
- * @version 0.7.3
+ * @version 0.7.4
  */
-const PANEL_VERSION = "0.7.3";
+const PANEL_VERSION = "0.7.4";
 
 /* —— Labels ——
    Every word the panel shows comes from a language file (www/i18n/<lang>.json, keys like
@@ -492,6 +492,7 @@ input[readonly] { opacity: 0.7; cursor: default; }
 .feature-desc { font-size: 12px; color: var(--secondary-text-color); margin-top: 2px; line-height: 1.35; }
 .feature-value { font-size: 14px; font-weight: 600; white-space: nowrap; text-align: right; }
 .feature-value small { display: block; font-size: 11px; font-weight: 500; color: var(--secondary-text-color); }
+.room-rates > div + div { margin-top: 6px; }
 .link-btn {
   border: 0; background: none; padding: 0; font: inherit; color: var(--primary-color);
   cursor: pointer; text-decoration: underline;
@@ -1634,7 +1635,11 @@ class NookPanel extends HTMLElement {
       pills.push(`<span class="hero-pill ${cls}">${icon}${this._escape(text)}</span>`);
     if (live.safety_active) pill("heat", t("hero.pill.safety"), flameSvg());
     else if (live.boiler_on) pill("heat", t("hero.pill.boiler_on"), flameSvg());
-    if (preheat.preheating) pill("heat", t("hero.pill.preheating", { time: preheat.block_start ?? "" }).trim());
+    if (preheat.preheating) {
+      pill("heat", preheat.preheat_room
+        ? t("hero.pill.preheating_room", { time: preheat.block_start ?? "", room: preheat.preheat_room })
+        : t("hero.pill.preheating", { time: preheat.block_start ?? "" }).trim());
+    }
     if (live.leaf?.active) pill("leaf", t("hero.pill.leaf"), leafSvg());
     if (live.away) pill("warn", t("hero.pill.away"));
     if (live.window_open) pill("warn", t("hero.pill.window_open"));
@@ -1839,6 +1844,11 @@ class NookPanel extends HTMLElement {
     const rate = intel.warmup_c_per_hour;
     const coast = intel.coast_c;
     const coastSamples = Number(intel.coast_samples ?? 0);
+    const roomWarmup = live.room_warmup || {};
+    const roomRates = (this._cfg().rooms || [])
+      .filter((r) => roomWarmup[r.id]?.samples)
+      .map((r) => `<div>${this._escape(r.name)} · ${t("unit.c_per_hour", { value: this._escape(roomWarmup[r.id].c_per_hour) })}<small>${tn("intel.samples", roomWarmup[r.id].samples)}</small></div>`)
+      .join("");
 
     return `
       ${heaterWarning}
@@ -1887,6 +1897,7 @@ class NookPanel extends HTMLElement {
             ${feature(t("intel.away_delay"), t("intel.away_delay.desc"), t("unit.minutes", { value: this._escape(intel.away_delay_minutes ?? 20) }))}
             ${feature(t("intel.warmup"), t("intel.warmup.desc"),
               `${rate != null ? t("unit.c_per_hour", { value: this._escape(rate) }) : "—"}<small>${samples ? tn("intel.samples", samples) : t("intel.still_learning")}</small>`)}
+            ${roomRates ? feature(t("intel.room_warmup"), t("intel.room_warmup.desc"), `<div class="room-rates">${roomRates}</div>`) : ""}
             ${feature(t("intel.coast"), t("intel.coast.desc"),
               `${coast != null ? t("unit.celsius", { value: this._escape(Number(coast).toFixed(2)) }) : "—"}<small>${coastSamples ? tn("intel.runs", coastSamples) : t("intel.still_learning")}</small>`)}
           </div>

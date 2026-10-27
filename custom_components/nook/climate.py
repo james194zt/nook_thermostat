@@ -141,6 +141,9 @@ class NookHomeClimate(CoordinatorEntity[NookCoordinator], ClimateEntity):
             ATTR_TRUE_RADIANT: bool(self.coordinator.config.true_radiant),
             ATTR_PREHEATING: bool(preheat.get("preheating")),
             ATTR_PREHEAT_FOR: preheat.get("block_start") if preheat.get("preheating") else None,
+            # The room the preheat is timed for (None: the house sensor).
+            "preheat_room": preheat.get("preheat_room"),
+            "preheat_start": preheat.get("preheat_start"),
             ATTR_LEAF: bool(leaf.get("active")),
             ATTR_LEAF_THRESHOLD: leaf.get("threshold"),
             ATTR_LEAF_BASELINE: leaf.get("baseline"),

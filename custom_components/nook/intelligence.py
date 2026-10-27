@@ -42,6 +42,8 @@ LONG_PREHEAT_MINUTES = 240
 MIN_PREHEAT_MINUTES = 5
 WARMUP_MIN_CYCLE_MINUTES = 15
 WARMUP_MIN_RISE_C = 0.3
+# A room's own warm-up rate times preheat once it has this many runs.
+ROOM_WARMUP_MIN_SAMPLES = 2
 DEFAULT_AWAY_DELAY_MINUTES = 20
 LEARNING_WINDOW_MINUTES = 30
 
@@ -536,6 +538,10 @@ class IntelligenceState:
     coast_watch: CoastWatch = field(default_factory=CoastWatch)
     # The boiler run in progress, for warm-up learning: {"start", "start_temp", "house_called"}.
     heat_cycle: dict[str, Any] = field(default_factory=dict)
+    # Each room's own warm-up rate (rooms with their own sensor), by room id,
+    # and the runs in progress: {room_id: {"start", "start_temp"}}.
+    room_warmup: dict[str, WarmupModel] = field(default_factory=dict)
+    room_runs: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Which house sensor is in use, and the learned backup offset.
     sensor_health: SensorHealth = field(default_factory=SensorHealth)
     # Sensors Nook set to fast reporting (so turning it off can put them back).
@@ -556,6 +562,8 @@ class IntelligenceState:
             "heat_check": self.heat_check.to_dict(),
             "coast_watch": self.coast_watch.to_dict(),
             "heat_cycle": self.heat_cycle,
+            "room_warmup": {k: v.to_dict() for k, v in self.room_warmup.items()},
+            "room_runs": self.room_runs,
             "sensor_health": self.sensor_health.to_dict(),
             "fast_reporting": self.fast_reporting,
             "recent_cycles": self.recent_cycles[-40:],
@@ -577,6 +585,11 @@ class IntelligenceState:
             heat_check=HeatCheck.from_dict(data.get("heat_check")),
             coast_watch=CoastWatch.from_dict(data.get("coast_watch")),
             heat_cycle=dict(data.get("heat_cycle") or {}),
+            room_warmup={
+                str(k): WarmupModel.from_dict(v)
+                for k, v in (data.get("room_warmup") or {}).items()
+            },
+            room_runs={str(k): dict(v) for k, v in (data.get("room_runs") or {}).items()},
             sensor_health=SensorHealth.from_dict(data.get("sensor_health")),
             fast_reporting=[str(e) for e in (data.get("fast_reporting") or [])],
             recent_cycles=list(data.get("recent_cycles") or []),
@@ -688,6 +701,19 @@ def estimate_preheat_minutes(
     return max(0, min(max_minutes, minutes))
 
 
+@dataclass
+class PreheatRoom:
+    """A room with its own sensor that will call for heat when the block starts."""
+
+    name: str
+    current_temp: float
+    # Learned for this room; the house rate until it has ROOM_WARMUP_MIN_SAMPLES.
+    warmup: WarmupModel | None = None
+    # Follows the house: block temperature + this. None: its own target_temp.
+    house_offset: float | None = 0.0
+    target_temp: float = 0.0
+
+
 def preheat_status(
     schedule: dict[str, list[dict[str, Any]]],
     *,
@@ -702,6 +728,7 @@ def preheat_status(
     offsets: dict[str, float] | None = None,
     now: datetime | None = None,
     started_block: str | None = None,
+    rooms: list[PreheatRoom] | None = None,
 ) -> dict[str, Any] | None:
     """Return preheat status dict when approaching an upcoming block.
 
@@ -711,6 +738,10 @@ def preheat_status(
     ``started_block``: the block whose preheat has already begun. It keeps
     going until the block starts — re-estimating from the warmer house made it
     "too early" again (22 Oct 2026: five boiler starts in one morning).
+
+    ``rooms``: the preheat starts for whichever needs longest, the house sensor
+    or one of these. 27 Oct 2026: the hall was 0.4 °C short, so a 19-minute
+    preheat; the living room was 1.4 °C short and reached 20 half an hour late.
     """
     if not true_radiant or not schedule_enabled or away_eco_active:
         return None
@@ -729,6 +760,24 @@ def preheat_status(
         cycles=cycles,
         max_minutes=max_minutes,
     )
+    led_by = None
+    for room in rooms or []:
+        room_target = (
+            round(target + room.house_offset, 1)
+            if room.house_offset is not None
+            else float(room.target_temp)
+        )
+        learned = room.warmup if room.warmup and room.warmup.samples >= ROOM_WARMUP_MIN_SAMPLES else None
+        room_needed = estimate_preheat_minutes(
+            current_temp=room.current_temp,
+            target_temp=room_target,
+            warmup=replace(learned or warmup),
+            outdoor_temp=outdoor_temp,
+            cycles=cycles,
+            max_minutes=max_minutes,
+        )
+        if room_needed > needed:
+            needed, led_by = room_needed, room.name
     # Same block key next week mustn't count: only within the longest preheat.
     started = (
         started_block is not None
@@ -747,6 +796,8 @@ def preheat_status(
         "block_start": start_dt.strftime("%H:%M"),
         "preheat_start": preheat_start.strftime("%H:%M"),
         "preheat_minutes": needed,
+        # The room the timing is for (None: the house sensor).
+        "preheat_room": led_by,
     }
 
 

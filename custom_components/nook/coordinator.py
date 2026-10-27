@@ -40,6 +40,7 @@ from .intelligence import (
     MAX_PREHEAT_MINUTES,
     HeatCheck,
     IntelligenceStore,
+    PreheatRoom,
     WarmupModel,
     accrue_leaf_minutes,
     active_block_key,
@@ -395,6 +396,8 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.intel.state.warmup = WarmupModel()
         self.intel.state.coast_watch.clear()
         self.intel.state.recent_cycles = []
+        self.intel.state.room_warmup = {}
+        self.intel.state.room_runs = {}
         await self.intel.async_save()
         await self.async_request_refresh()
 
@@ -473,6 +476,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "house_sensor": self._sensor_info(),
             "temperature_sensors": self.temperature_sensors_info(),
             "room_floors": self.room_floors(),
+            "room_warmup": self.room_warmup_info(),
             "control_released_until": (
                 self._released_until.isoformat() if self._released_until else None
             ),
@@ -885,6 +889,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 offsets=seasonal.offsets if seasonal.started_at else None,
                 now=now,
                 started_block=self._preheat_started,
+                rooms=self._preheat_rooms(),
             )
             self._preheat = status
             preheating = bool(status and status.get("preheating"))
@@ -915,6 +920,97 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._house_comfort = True
         return self._main_target, False
+
+    def _room_has_own_sensor(self, room: RoomConfig) -> bool:
+        """The room has a sensor of its own (not just the house sensor, not the TRV)."""
+        ids = self._room_sensor_ids(room)
+        return bool(ids) and ids != [self.config.temperature_sensor]
+
+    def _preheat_rooms(self) -> list[PreheatRoom]:
+        """Rooms that will call for heat when the next block starts, for preheat timing."""
+        if self.config.summer_mode:
+            return []
+        rooms = []
+        for room in self.config.rooms:
+            st = self._room_states.get(room.id, {})
+            if (
+                not room.enabled
+                or not room.calls_for_heat
+                or not self._room_has_own_sensor(room)
+                or st.get("hvac_mode") != "heat"
+                or st.get("preset", PRESET_NONE) != PRESET_NONE
+                or self._any_window_open(room.window_sensors)
+            ):
+                continue
+            current = self.room_current_temp(room)
+            if current is None:
+                continue
+            rooms.append(
+                PreheatRoom(
+                    name=room.name,
+                    current_temp=current,
+                    warmup=self.intel.state.room_warmup.get(room.id),
+                    house_offset=room.house_offset if room.follow_house else None,
+                    target_temp=room.target_temp,
+                )
+            )
+        return rooms
+
+    def _track_room_runs(self, heating: bool, *, learnable: bool) -> None:
+        """Learn each room's own warm-up rate from the runs where it called for heat.
+
+        A run is the time the boiler is on while the room calls; the rate is its
+        sensor's rise over that time, filtered like the house rate.
+        """
+        now = self._now()
+        runs = self.intel.state.room_runs
+        before = {k: dict(v) for k, v in runs.items()}
+        faulty = self.intel.state.heat_check.fault_since is not None
+        ids = {room.id for room in self.config.rooms}
+        for room_id in [k for k in runs if k not in ids]:
+            runs.pop(room_id)
+        for room_id in [k for k in self.intel.state.room_warmup if k not in ids]:
+            self.intel.state.room_warmup.pop(room_id)
+            self._dirty_intel = True
+        for room in self.config.rooms:
+            current = self.room_current_temp(room) if self._room_has_own_sensor(room) else None
+            calling = (
+                heating
+                and learnable
+                and current is not None
+                and bool(self._room_states.get(room.id, {}).get("needs_heat"))
+            )
+            run = runs.get(room.id)
+            if calling and run is None:
+                runs[room.id] = {"start": now.isoformat(), "start_temp": current}
+            elif not calling and run is not None:
+                runs.pop(room.id)
+                start = dt_util.parse_datetime(str(run.get("start")))
+                start_temp = run.get("start_temp")
+                if start is None or not isinstance(start_temp, (int, float)):
+                    continue
+                duration = (now - start).total_seconds() / 60.0
+                if current is None or faulty or not 0 < duration <= MAX_LEARN_RUN_HOURS * 60:
+                    continue
+                prior = self.intel.state.room_warmup.get(room.id) or WarmupModel()
+                learned = update_warmup_from_cycle(
+                    prior,
+                    start_temp=float(start_temp),
+                    end_temp=current,
+                    duration_minutes=duration,
+                    outdoor_temp=self._state_float(self.config.outdoor_temp_sensor),
+                )
+                if learned is not prior:  # a run too short or too small is skipped
+                    self.intel.state.room_warmup[room.id] = learned
+                    self._dirty_intel = True
+        if runs != before:
+            self._dirty_intel = True
+
+    def room_warmup_info(self) -> dict[str, dict[str, Any]]:
+        return {
+            room_id: {"c_per_hour": model.c_per_hour, "samples": model.samples}
+            for room_id, model in self.intel.state.room_warmup.items()
+        }
 
     def _seasonal_block_now(self) -> str | None:
         """The schedule block Seasonal Savings is lowering right now (running or preheating)."""
@@ -1771,6 +1867,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._heat_cycle_start = None
 
         self._track_heat_cycle(heating)
+        self._track_room_runs(heating, learnable=not released)
         if track_heat_interval(self.intel.state.energy, want_heat=heating):
             self._dirty_intel = True
         await self._async_check_warming(
