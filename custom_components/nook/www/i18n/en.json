@@ -185,6 +185,7 @@
   "intel.coast.desc": "How much the leftover heat of the radiator \"coasts\" the room temperature",
   "intel.leaf": "Leaf Coaching",
   "intel.leaf.desc": "Rewards a leaf when you're saving energy",
+  "intel.lag": "starts rising after {value} min",
   "intel.room_warmup": "Room warm-up rates",
   "intel.room_warmup.desc": "How fast each room with its own sensor heats; preheat starts for the room that needs longest",
   "intel.runs.one": "{count} run",

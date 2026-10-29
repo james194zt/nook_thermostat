@@ -1,9 +1,9 @@
 /**
  * Nook — HA sidebar panel.
  * Fox Plant–style shell + dial overview / schedule.
- * @version 0.7.4
+ * @version 0.7.5
  */
-const PANEL_VERSION = "0.7.4";
+const PANEL_VERSION = "0.7.5";
 
 /* —— Labels ——
    Every word the panel shows comes from a language file (www/i18n/<lang>.json, keys like
@@ -1847,7 +1847,11 @@ class NookPanel extends HTMLElement {
     const roomWarmup = live.room_warmup || {};
     const roomRates = (this._cfg().rooms || [])
       .filter((r) => roomWarmup[r.id]?.samples)
-      .map((r) => `<div>${this._escape(r.name)} · ${t("unit.c_per_hour", { value: this._escape(roomWarmup[r.id].c_per_hour) })}<small>${tn("intel.samples", roomWarmup[r.id].samples)}</small></div>`)
+      .map((r) => {
+        const w = roomWarmup[r.id];
+        const lag = w.lag_minutes != null ? ` · ${t("intel.lag", { value: this._escape(Math.round(w.lag_minutes)) })}` : "";
+        return `<div>${this._escape(r.name)} · ${t("unit.c_per_hour", { value: this._escape(w.c_per_hour) })}<small>${tn("intel.samples", w.samples)}${lag}</small></div>`;
+      })
       .join("");
 
     return `
@@ -1896,7 +1900,7 @@ class NookPanel extends HTMLElement {
             ${feature(t("intel.leaf"), t("intel.leaf.desc"), onOff(intel.leaf_enabled !== false))}
             ${feature(t("intel.away_delay"), t("intel.away_delay.desc"), t("unit.minutes", { value: this._escape(intel.away_delay_minutes ?? 20) }))}
             ${feature(t("intel.warmup"), t("intel.warmup.desc"),
-              `${rate != null ? t("unit.c_per_hour", { value: this._escape(rate) }) : "—"}<small>${samples ? tn("intel.samples", samples) : t("intel.still_learning")}</small>`)}
+              `${rate != null ? t("unit.c_per_hour", { value: this._escape(rate) }) : "—"}<small>${samples ? tn("intel.samples", samples) : t("intel.still_learning")}${intel.warmup_lag_minutes != null ? ` · ${t("intel.lag", { value: this._escape(Math.round(intel.warmup_lag_minutes)) })}` : ""}</small>`)}
             ${roomRates ? feature(t("intel.room_warmup"), t("intel.room_warmup.desc"), `<div class="room-rates">${roomRates}</div>`) : ""}
             ${feature(t("intel.coast"), t("intel.coast.desc"),
               `${coast != null ? t("unit.celsius", { value: this._escape(Number(coast).toFixed(2)) }) : "—"}<small>${coastSamples ? tn("intel.runs", coastSamples) : t("intel.still_learning")}</small>`)}

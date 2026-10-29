@@ -36,8 +36,10 @@ from .const import (
 )
 from . import intelligence
 from .intelligence import (
+    LAG_RISE_C,
     LONG_PREHEAT_MINUTES,
     MAX_PREHEAT_MINUTES,
+    ROOM_WARMUP_MIN_SAMPLES,
     HeatCheck,
     IntelligenceStore,
     PreheatRoom,
@@ -123,6 +125,9 @@ CALIBRATE_MAX_OFFSET = 0.0
 # one settling (21 Oct: placed at 25.0 °C, fell 3.7 °C in 25 min ≈ 9 °C/h). A real
 # warm-up reached 3.6 °C/h (23 Oct, living room with Faster updates on).
 CALIBRATE_SETTLING_C_PER_HOUR = 6.0
+# A room that has learned its warm-up rate may move this many times that rate
+# (short bursts run well above the average) before it counts as settling.
+CALIBRATE_SETTLING_RATE_FACTOR = 2.5
 CALIBRATE_SETTLING_WINDOW = timedelta(minutes=15)
 # A TRV can over-read by more than its offset can correct (22 Oct: living room
 # TRVs read 20.0 at −2.5 with the room at 17.8, and shut). Then the setpoint is
@@ -192,6 +197,8 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._preheat_started: str | None = None
         self._heat_cycle_start: datetime | None = None
         self._heat_cycle_start_temp: float | None = None
+        # Minutes into the run when the house sensor had risen LAG_RISE_C.
+        self._heat_cycle_lag: float | None = None
         self._heat_cycle_house_called = False
         self._last_boiler_on = False
         # Hysteresis state: is the house currently calling for heat?
@@ -487,6 +494,9 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "away_delay_minutes": self.config.away_delay_minutes,
                 "warmup_c_per_hour": self.intel.state.warmup.c_per_hour,
                 "warmup_samples": self.intel.state.warmup.samples,
+                "warmup_lag_minutes": (
+                    self.intel.state.warmup.lag_minutes if self.intel.state.warmup.lag_samples else None
+                ),
                 "coast_c": self.intel.state.warmup.coast_c,
                 "coast_samples": self.intel.state.warmup.coast_samples,
                 "leaf_enabled": self.config.leaf_enabled,
@@ -983,6 +993,15 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             run = runs.get(room.id)
             if calling and run is None:
                 runs[room.id] = {"start": now.isoformat(), "start_temp": current}
+            elif calling and run.get("lag") is None:
+                start = dt_util.parse_datetime(str(run.get("start")))
+                start_temp = run.get("start_temp")
+                if (
+                    start is not None
+                    and isinstance(start_temp, (int, float))
+                    and current >= start_temp + LAG_RISE_C - 1e-9
+                ):
+                    run["lag"] = round((now - start).total_seconds() / 60.0, 1)
             elif not calling and run is not None:
                 runs.pop(room.id)
                 start = dt_util.parse_datetime(str(run.get("start")))
@@ -999,6 +1018,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     end_temp=current,
                     duration_minutes=duration,
                     outdoor_temp=self._state_float(self.config.outdoor_temp_sensor),
+                    lag_minutes=run.get("lag") if isinstance(run.get("lag"), (int, float)) else None,
                 )
                 if learned is not prior:  # a run too short or too small is skipped
                     self.intel.state.room_warmup[room.id] = learned
@@ -1008,7 +1028,11 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def room_warmup_info(self) -> dict[str, dict[str, Any]]:
         return {
-            room_id: {"c_per_hour": model.c_per_hour, "samples": model.samples}
+            room_id: {
+                "c_per_hour": model.c_per_hour,
+                "samples": model.samples,
+                "lag_minutes": model.lag_minutes if model.lag_samples else None,
+            }
             for room_id, model in self.intel.state.room_warmup.items()
         }
 
@@ -1457,7 +1481,18 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if first_at > cutoff:
             return False
         hours = (now - first_at).total_seconds() / 3600
-        return abs(value - first) / hours < CALIBRATE_SETTLING_C_PER_HOUR
+        return abs(value - first) / hours < self._settling_limit(room_id)
+
+    def _settling_limit(self, room_id: str) -> float:
+        """°C/h a room reading may move and still count as measuring the room.
+
+        CALIBRATE_SETTLING_C_PER_HOUR, raised for a room that has learned it
+        really warms fast (a small room with a big radiator can top 6 °C/h).
+        """
+        learned = self.intel.state.room_warmup.get(room_id)
+        if learned is None or learned.samples < ROOM_WARMUP_MIN_SAMPLES:
+            return CALIBRATE_SETTLING_C_PER_HOUR
+        return max(CALIBRATE_SETTLING_C_PER_HOUR, CALIBRATE_SETTLING_RATE_FACTOR * learned.c_per_hour)
 
     def _trv_send(
         self, entity_id: str, calls: list[tuple[str, dict[str, Any]]], seen: tuple[Any, ...]
@@ -1559,6 +1594,16 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._heat_cycle_start = now
             self._heat_cycle_start_temp = current
             self._heat_cycle_house_called = False
+            self._heat_cycle_lag = None
+        if (
+            want_heat
+            and self._heat_cycle_start is not None
+            and self._heat_cycle_lag is None
+            and current is not None
+            and self._heat_cycle_start_temp is not None
+            and current >= self._heat_cycle_start_temp + LAG_RISE_C - 1e-9
+        ):
+            self._heat_cycle_lag = round((now - self._heat_cycle_start).total_seconds() / 60.0, 1)
         if want_heat and (self._house_calling or self._safety_active):
             self._heat_cycle_house_called = True
         elif not want_heat and self._last_boiler_on and self._heat_cycle_start:
@@ -1579,6 +1624,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     end_temp=current,
                     duration_minutes=duration,
                     outdoor_temp=outdoor,
+                    lag_minutes=self._heat_cycle_lag,
                 )
                 self.intel.state.recent_cycles.append(
                     {
@@ -1594,6 +1640,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._dirty_intel = True
             self._heat_cycle_start = None
             self._heat_cycle_start_temp = None
+            self._heat_cycle_lag = None
         self._last_boiler_on = want_heat
         # Persist the run in progress: a restart mid-run must not lose its start.
         cycle = (
@@ -1601,6 +1648,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "start": self._heat_cycle_start.isoformat(),
                 "start_temp": self._heat_cycle_start_temp,
                 "house_called": self._heat_cycle_house_called,
+                "lag": self._heat_cycle_lag,
             }
             if self._heat_cycle_start is not None
             else {}
@@ -1624,6 +1672,8 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         temp = cycle.get("start_temp")
         self._heat_cycle_start_temp = float(temp) if isinstance(temp, (int, float)) else None
         self._heat_cycle_house_called = bool(cycle.get("house_called"))
+        lag = cycle.get("lag")
+        self._heat_cycle_lag = float(lag) if isinstance(lag, (int, float)) else None
         self._last_boiler_on = True
 
     def _track_coast(self, heating: bool, *, disturbed: bool = False) -> None:

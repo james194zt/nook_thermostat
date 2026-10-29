@@ -149,6 +149,16 @@ async def test_living_room_starts_the_preheat(hass, coord):
     assert [r.name for r in coord._preheat_rooms()] == ["Living Room"]  # noqa: SLF001
 
 
+async def test_settling_limit_follows_a_fast_room(hass, coord):
+    assert coord._settling_limit("living_room") == 6.0  # noqa: SLF001  nothing learned
+    coord.intel.state.room_warmup["living_room"] = WarmupModel(c_per_hour=3.2, samples=1)
+    assert coord._settling_limit("living_room") == 6.0  # noqa: SLF001  one run isn't enough
+    coord.intel.state.room_warmup["living_room"] = WarmupModel(c_per_hour=3.2, samples=2)
+    assert coord._settling_limit("living_room") == pytest.approx(8.0)  # noqa: SLF001
+    coord.intel.state.room_warmup["living_room"] = WarmupModel(c_per_hour=1.2, samples=5)
+    assert coord._settling_limit("living_room") == 6.0  # noqa: SLF001  never below the floor
+
+
 async def test_open_window_room_is_left_out(hass, coord, freezer):
     hass.states.async_set("binary_sensor.lr_window", "on")
     freezer.tick(timedelta(minutes=coord.config.window_open_delay_minutes + 1))
@@ -169,8 +179,13 @@ async def test_room_learns_its_warm_up_rate(hass, coord, freezer):
     assert "living_room" not in coord.intel.state.room_runs
     learned = coord.intel.state.room_warmup["living_room"]
     assert learned.samples == 1
-    # 1.8 °C in 70 min = 1.54 °C/h, blended into the 1.5 default at the first weight.
-    assert 1.5 < learned.c_per_hour < 1.55
+    # Rose 0.2 by the 06:20 reading (40 min in), then 1.6 °C in the last 30 min
+    # = 3.2 °C/h, blended into the 1.5 default at the first weight.
+    assert learned.c_per_hour == pytest.approx(1.5 * 0.65 + 3.2 * 0.35, abs=0.002)
+    assert learned.lag_samples == 1
+    assert learned.lag_minutes == pytest.approx(5 * 0.65 + 40 * 0.35, abs=0.06)
+    # The house run learned its dead time the same way.
+    assert coord.intel.state.warmup.lag_samples == 1
     assert coord.room_warmup_info()["living_room"]["samples"] == 1
     # It is kept across restarts.
     data = coord.intel.state.to_dict()

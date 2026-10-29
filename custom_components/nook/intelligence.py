@@ -44,6 +44,13 @@ WARMUP_MIN_CYCLE_MINUTES = 15
 WARMUP_MIN_RISE_C = 0.3
 # A room's own warm-up rate times preheat once it has this many runs.
 ROOM_WARMUP_MIN_SAMPLES = 2
+# Dead time: minutes from the boiler starting until the sensor has risen this
+# much (radiators heating up, sensor reporting). Learned per house and room; the
+# rate is then measured from that point. 29 Oct 2026: the living room took ~18
+# min to move, then rose 3.2 °C/h — one blended rate plus a fixed 5 min started
+# it 20–40 min early.
+LAG_RISE_C = 0.2
+DEFAULT_LAG_MINUTES = 5.0
 DEFAULT_AWAY_DELAY_MINUTES = 20
 LEARNING_WINDOW_MINUTES = 30
 
@@ -99,6 +106,9 @@ class WarmupModel:
     # Learned True Radiant coast (°C the house rises after the boiler stops).
     coast_c: float = DEFAULT_COAST_C
     coast_samples: int = 0
+    # Learned dead time (LAG_RISE_C); until then c_per_hour includes it.
+    lag_minutes: float = DEFAULT_LAG_MINUTES
+    lag_samples: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -108,6 +118,8 @@ class WarmupModel:
         if not data:
             return cls()
         return cls(
+            lag_minutes=float(data.get("lag_minutes", DEFAULT_LAG_MINUTES)),
+            lag_samples=int(data.get("lag_samples", 0)),
             c_per_hour=float(data.get("c_per_hour", DEFAULT_WARMUP_C_PER_HOUR)),
             samples=int(data.get("samples", 0)),
             last_outdoor=(
@@ -697,7 +709,10 @@ def estimate_preheat_minutes(
         warmup.last_outdoor = outdoor_temp
 
     rate = max(MIN_WARMUP_C_PER_HOUR, min(MAX_WARMUP_C_PER_HOUR, rate))
-    minutes = int((delta / rate) * 60) + 5
+    if warmup.lag_samples:
+        minutes = int(warmup.lag_minutes + (max(0.0, delta - LAG_RISE_C) / rate) * 60)
+    else:
+        minutes = int((delta / rate) * 60) + int(DEFAULT_LAG_MINUTES)
     return max(0, min(max_minutes, minutes))
 
 
@@ -808,19 +823,28 @@ def update_warmup_from_cycle(
     end_temp: float,
     duration_minutes: float,
     outdoor_temp: float | None = None,
+    lag_minutes: float | None = None,
 ) -> WarmupModel:
     """Blend a completed heat cycle into the warm-up model.
 
     Short runs and rises within sensor resolution say nothing about the house,
     and a rate below the floor means the boiler didn't really heat (a fault,
     not a slow house), so all of those are skipped rather than clamped in.
+
+    ``lag_minutes``: when the sensor had risen LAG_RISE_C; the dead time is
+    learned and the rate is measured from then on. None (never rose that much,
+    or not tracked): the rate over the whole run, as before.
     """
     if duration_minutes < WARMUP_MIN_CYCLE_MINUTES:
         return warmup
     rise = end_temp - start_temp
     if rise < WARMUP_MIN_RISE_C:
         return warmup
-    observed = rise / (duration_minutes / 60.0)
+    timed = lag_minutes is not None and 0 <= lag_minutes <= duration_minutes - MIN_PREHEAT_MINUTES
+    if timed:
+        observed = (rise - LAG_RISE_C) / ((duration_minutes - lag_minutes) / 60.0)
+    else:
+        observed = rise / (duration_minutes / 60.0)
     if observed < MIN_WARMUP_C_PER_HOUR:
         return warmup
     observed = min(MAX_WARMUP_C_PER_HOUR, observed)
@@ -828,11 +852,17 @@ def update_warmup_from_cycle(
     n = warmup.samples
     weight = min(0.35, 1.0 / (n + 1) + 0.15)
     new_rate = warmup.c_per_hour * (1 - weight) + observed * weight
+    lag, lag_n = warmup.lag_minutes, warmup.lag_samples
+    if timed:
+        lag_weight = min(0.35, 1.0 / (lag_n + 1) + 0.15)
+        lag, lag_n = round(lag * (1 - lag_weight) + lag_minutes * lag_weight, 1), lag_n + 1
     return replace(
         warmup,
         c_per_hour=round(new_rate, 3),
         samples=n + 1,
         last_outdoor=outdoor_temp if outdoor_temp is not None else warmup.last_outdoor,
+        lag_minutes=lag,
+        lag_samples=lag_n,
     )
 
 
