@@ -86,6 +86,9 @@ COAST_PEAK_PASSED_C = 0.2
 # (sun, cooking); give up watching after COAST_MAX_WATCH_MINUTES.
 COAST_MAX_PEAK_MINUTES = 60
 COAST_MAX_WATCH_MINUTES = 120
+# The boiler running on this long for rooms after the house stopped calling
+# spoils the coast measurement.
+COAST_ROOMS_GRACE_MINUTES = 3
 
 # Leaf (heating hard floor ≈ 62°F)
 LEAF_HARD_FLOOR_C = 16.5
@@ -437,6 +440,8 @@ class CoastWatch:
     # The boiler run in progress.
     run_started_at: str | None = None
     house_called: bool = False
+    # When the house stopped calling while the boiler ran on for rooms.
+    house_stopped_at: str | None = None
     # After the boiler stopped: temperature then, and the highest seen since.
     off_at: str | None = None
     off_temp: float | None = None
@@ -478,8 +483,12 @@ def update_coast_watch(
     temperature when it stopped. Only runs the house itself called for (rooms
     alone may not reach the house sensor) and that lasted long enough to get
     the radiators hot are measured. A window opening, the boiler starting
-    again or a late peak throws the measurement away. Returns the updated
-    model when a measurement completes and ``learn`` is set, else None.
+    again or a late peak throws the measurement away. So does a run the boiler
+    carried on with for rooms after the house had stopped calling: the house
+    sensor kept warming from the other rooms (30–31 Oct 2026: the hall's TRV
+    shut at 07:00, the boiler ran on for the living room to 07:37, and the
+    "coast" learned went 0.15 → 0.36 °C). Returns the updated model when a
+    measurement completes and ``learn`` is set, else None.
     """
     now = now or clock()
     if disturbed:
@@ -494,6 +503,9 @@ def update_coast_watch(
             watch.run_started_at = now.isoformat()
         if house_calling:
             watch.house_called = True
+            watch.house_stopped_at = None
+        elif watch.house_called and watch.house_stopped_at is None:
+            watch.house_stopped_at = now.isoformat()
         return None
 
     if watch.off_at is None:
@@ -502,8 +514,13 @@ def update_coast_watch(
             return None
         long_enough = now - started >= timedelta(minutes=COAST_MIN_RUN_MINUTES)
         house_called = watch.house_called
+        house_stopped = _parse_ts(watch.house_stopped_at)
+        # A few minutes' grace: the boiler's minimum on-time can outlast the call.
+        ran_on_for_rooms = house_stopped is not None and now - house_stopped > timedelta(
+            minutes=COAST_ROOMS_GRACE_MINUTES
+        )
         watch.clear()
-        if long_enough and house_called and current_temp is not None:
+        if long_enough and house_called and not ran_on_for_rooms and current_temp is not None:
             watch.off_at = now.isoformat()
             watch.off_temp = watch.peak_temp = current_temp
             watch.peak_at = watch.off_at

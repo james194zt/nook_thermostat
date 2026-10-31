@@ -52,6 +52,38 @@ def _run_then_coast(watch, model, *, run_minutes=30, house=True, coast_temps=Non
     return _ticks(watch, model, off, 125, temps, on=False, **kw)
 
 
+def _run_house_stops_then_rooms(watch, model, *, rooms_minutes):
+    """House calls for 30 min, then the boiler runs on rooms_minutes for a room."""
+    _ticks(watch, model, T0, 30, lambda i: 18.5 + i * 0.06, on=True)
+    _ticks(watch, model, T0 + timedelta(minutes=31), rooms_minutes, lambda i: 20.3 + i * 0.01, on=True, house=False)
+    off = T0 + timedelta(minutes=32 + rooms_minutes)
+    return _ticks(
+        watch, model, off, 125, lambda i: 20.6 + min(i, 15) * 0.03 - max(0, i - 15) * 0.01, on=False, house=False
+    )
+
+
+def test_run_carried_on_for_rooms_is_not_measured():
+    # 31 Oct 2026: the hall's TRV shut at 07:00, the boiler ran on for the living
+    # room to 07:37 and the hall drifted 20.9 → 21.4 from the rooms around it.
+    watch = CoastWatch()
+    assert _run_house_stops_then_rooms(watch, WarmupModel(), rooms_minutes=37) is None
+    assert watch == CoastWatch()
+
+
+def test_minimum_on_time_after_the_call_still_counts():
+    watch = CoastWatch()
+    assert _run_house_stops_then_rooms(watch, WarmupModel(), rooms_minutes=2) is not None
+
+
+def test_house_calling_again_clears_the_stop():
+    watch = CoastWatch()
+    _ticks(watch, WarmupModel(), T0, 20, lambda i: 18.5, on=True)
+    _ticks(watch, WarmupModel(), T0 + timedelta(minutes=21), 10, lambda i: 19.0, on=True, house=False)
+    assert watch.house_stopped_at is not None
+    _ticks(watch, WarmupModel(), T0 + timedelta(minutes=32), 5, lambda i: 19.0, on=True)
+    assert watch.house_stopped_at is None
+
+
 def test_measures_the_rise_after_the_boiler_stops():
     watch = CoastWatch()
     learned = _run_then_coast(watch, WarmupModel())
