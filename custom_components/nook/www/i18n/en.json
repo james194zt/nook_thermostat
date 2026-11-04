@@ -504,7 +504,7 @@
   "sensors.watch_added": "Watching {name}",
   "sensors.watch_removed": "Stopped watching {name}",
   "sensors.watch_stop": "Stop watching",
-  "settings.auto_schedule.desc": "When you make the same change by hand at about the same time (within half an hour) on the same weekday twice, on three different weekdays, or on both weekend days, the schedule follows: turning down to Eco ends a block early (or drops it if you turned it down just after it started), turning up starts a block earlier, runs it later or adds one. Each change shows a notification; a block you remove stays removed.",
+  "settings.auto_schedule.desc": "Learns from the changes you make by hand. Make the same change at about the same time (within half an hour) on the same weekday twice and that day changes; on three different weekdays, every weekday changes; on both weekend days, the weekend changes. Turning down to Eco (or picking Eco) ends a block early, or drops it if you did it just after the block started. Turning up starts a block earlier, runs it later or adds a new one; changing the temperature partway through a block changes it from then on. Each change shows a notification, and a block you remove stays removed.",
   "settings.away.desc": "Used while everyone is out.",
   "settings.away_delay": "Away delay",
   "settings.away_delay.desc": "How long everyone must be gone before Away (Eco) starts.",
