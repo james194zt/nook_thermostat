@@ -52,7 +52,6 @@ ROOM_WARMUP_MIN_SAMPLES = 2
 LAG_RISE_C = 0.2
 DEFAULT_LAG_MINUTES = 5.0
 DEFAULT_AWAY_DELAY_MINUTES = 20
-LEARNING_WINDOW_MINUTES = 30
 
 # "Not warming" check: boiler-on minutes that should have warmed the house.
 # A run is credited with its rise (plus radiator coast), less one sensor step
@@ -62,11 +61,29 @@ HEAT_CHECK_COAST_MINUTES = 30
 HEAT_CHECK_SENSOR_STEP_C = 0.1
 HEAT_CHECK_STALE_HOURS = 6
 HEAT_CHECK_MAX_TICK_MINUTES = 5
-# Auto-Schedule: a change must repeat on this many different dates, agree
-# within this spread, and be this recent.
+# Auto-Schedule: a change must repeat on this many dates of the same weekday
+# (or on this many different weekdays / both weekend days within
+# AUTO_SCHEDULE_GROUP_DAYS), within ±MATCH minutes of the same time, comfort
+# settings agreeing within this spread, and be this recent.
 AUTO_SCHEDULE_MIN_DAYS = 2
+AUTO_SCHEDULE_WEEKDAY_GROUP = 3
+AUTO_SCHEDULE_GROUP_DAYS = 14
+AUTO_SCHEDULE_MATCH_MINUTES = 30
 AUTO_SCHEDULE_MAX_SPREAD_C = 1.0
 AUTO_SCHEDULE_KEEP_DAYS = 28
+# Dial taps this close together on one date are one change (the last one).
+AUTO_SCHEDULE_SETTLE_MINUTES = 10
+# A turn-up this close before a block (or after one ends) at its temperature
+# moves that block's start (or end) instead of adding a new block.
+AUTO_SCHEDULE_NEAR_MINUTES = 60
+AUTO_SCHEDULE_NEW_BLOCK_MINUTES = 120
+AUTO_SCHEDULE_LOG_KEEP = 20
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri")
+WEEKEND_DAYS = ("sat", "sun")
+DAY_NAMES = {
+    "mon": "Mondays", "tue": "Tuesdays", "wed": "Wednesdays", "thu": "Thursdays",
+    "fri": "Fridays", "sat": "Saturdays", "sun": "Sundays",
+}
 # Preheat: fit warm-up rate against outdoor temperature from this many runs
 # spanning at least this much outdoor range; otherwise use the plain rate.
 OUTDOOR_FIT_MIN_RUNS = 6
@@ -577,6 +594,8 @@ class IntelligenceState:
     fast_reporting: list[str] = field(default_factory=list)
     recent_cycles: list[dict[str, Any]] = field(default_factory=list)
     adjustments: list[dict[str, Any]] = field(default_factory=list)
+    # What Auto-Schedule changed: [{"at", "text"}], newest last.
+    schedule_log: list[dict[str, Any]] = field(default_factory=list)
     learning_started_at: str | None = None
     away_since: str | None = None
     leaf: LeafState = field(default_factory=LeafState)
@@ -597,6 +616,7 @@ class IntelligenceState:
             "fast_reporting": self.fast_reporting,
             "recent_cycles": self.recent_cycles[-40:],
             "adjustments": self.adjustments[-200:],
+            "schedule_log": self.schedule_log[-AUTO_SCHEDULE_LOG_KEEP:],
             "learning_started_at": self.learning_started_at,
             "away_since": self.away_since,
             "leaf": self.leaf.to_dict(),
@@ -623,6 +643,7 @@ class IntelligenceState:
             fast_reporting=[str(e) for e in (data.get("fast_reporting") or [])],
             recent_cycles=list(data.get("recent_cycles") or []),
             adjustments=list(data.get("adjustments") or []),
+            schedule_log=list(data.get("schedule_log") or []),
             learning_started_at=data.get("learning_started_at"),
             away_since=data.get("away_since"),
             leaf=LeafState.from_dict(data.get("leaf")),
@@ -923,20 +944,22 @@ def learn_schedule_from_adjustments(
     auto_schedule: bool,
     eco_temp: float = DEFAULT_ECO_TEMP,
     now: datetime | None = None,
-    default_block_minutes: int = 120,
 ) -> tuple[dict[str, list[dict[str, Any]]], bool]:
-    """Turn a repeated manual change into a schedule block.
+    """Turn repeated manual changes into schedule changes, both ways.
 
-    A pattern is the same half-hour on the same weekday, on at least
-    AUTO_SCHEDULE_MIN_DAYS different dates, with the final setting each date
-    within AUTO_SCHEDULE_MAX_SPREAD_C
-    of each other. Several dial taps on one date count once (the last one
-    wins); changes older than AUTO_SCHEDULE_KEEP_DAYS are forgotten; turning
-    the heat down to Eco or below never creates a comfort block.
+    Turning down to Eco (or below) ends a block early — or drops it when that
+    happens soon after it starts — which is where the money is saved. Turning
+    up moves a block's start earlier, runs a block on later, changes its
+    temperature from that time, or adds a new block in a gap.
 
-    Near an existing block's start only its temperature changes. Elsewhere a
-    new block is added in a gap, ending before the next block; a change in
-    the middle of an existing block is left to the manual hold.
+    A pattern is a change of the same kind (down to Eco, or to a comfort
+    temperature within AUTO_SCHEDULE_MAX_SPREAD_C) within ±AUTO_SCHEDULE_MATCH_MINUTES
+    of the same time on: the same weekday on two dates, three different
+    weekdays (applied Monday–Friday), or both weekend days (applied to both).
+    Dial taps a few minutes apart on one date count once (the last one wins).
+    The changes a pattern used are then forgotten, so a learned block the user
+    deletes doesn't come back. Changes older than AUTO_SCHEDULE_KEEP_DAYS are
+    forgotten too. What changed is appended to ``state.schedule_log``.
     """
     if not auto_schedule:
         return schedule, False
@@ -947,59 +970,195 @@ def learn_schedule_from_adjustments(
         at = _parse_ts(adj.at)
         if at is not None and at >= cutoff:
             kept.append(adj)
-    if len(kept) != len(state.adjustments):
+    kept.sort(key=lambda a: a.at)
+
+    # Settle each date's dial taps: a change followed within a few minutes by
+    # another is replaced by it. Each settled change keeps the taps it stands for.
+    settled: list[dict[str, Any]] = []
+    for idx, adj in enumerate(kept):
+        date = adj.at[:10]
+        last = settled[-1] if settled else None
+        if (
+            last is not None
+            and last["date"] == date
+            and adj.minute_of_day - last["minute"] <= AUTO_SCHEDULE_SETTLE_MINUTES
+        ):
+            last.update(minute=adj.minute_of_day, temp=adj.temperature)
+            last["ids"].append(idx)
+        else:
+            settled.append(
+                {"date": date, "day": adj.day, "minute": adj.minute_of_day,
+                 "temp": adj.temperature, "ids": [idx]}
+            )
+    for item in settled:
+        item["off"] = item["temp"] <= eco_temp + 0.01
+
+    new_schedule = {d: [dict(b) for b in (schedule.get(d) or [])] for d in DAYS}
+    used: set[int] = set()
+    notes: list[str] = []
+    for anchor in reversed(settled):  # the newest habits first
+        if anchor["ids"][0] in used:
+            continue
+        pattern = _find_pattern(anchor, settled, used)
+        if pattern is None:
+            continue
+        days, members = pattern
+        for item in members:
+            used.update(item["ids"])
+        # The earlier middle time: a turn-down sooner saves more, a turn-up sooner is warm sooner.
+        minute = _round_quarter(sorted(m["minute"] for m in members)[(len(members) - 1) // 2])
+        if anchor["off"]:
+            temp = eco_temp
+        else:
+            temp = round(sum(m["temp"] for m in members) / len(members) * 2) / 2.0
+        by_text: dict[str, list[str]] = {}
+        for day in days:
+            text = _apply_learned_change(new_schedule[day], minute, temp, eco_temp, off=anchor["off"])
+            if text:
+                by_text.setdefault(text, []).append(day)
+        for text, on_days in by_text.items():
+            notes.append(f"{_days_label(on_days)}: {text}")
+
+    if used:
+        state.adjustments = [a.to_dict() for i, a in enumerate(kept) if i not in used]
+    elif len(kept) != len(state.adjustments):
         state.adjustments = [a.to_dict() for a in kept]
+    if not notes:
+        return schedule, False
+    for note in notes:
+        state.schedule_log.append({"at": now.isoformat(), "text": note})
+    state.schedule_log = state.schedule_log[-AUTO_SCHEDULE_LOG_KEEP:]
+    return new_schedule, True
 
-    # (weekday, half-hour) -> {date: last setting that date}
-    buckets: dict[tuple[str, int], dict[str, ManualAdjustment]] = {}
-    for adj in sorted(kept, key=lambda a: a.at):
-        key = (adj.day, adj.minute_of_day // LEARNING_WINDOW_MINUTES)
-        buckets.setdefault(key, {})[adj.at[:10]] = adj
 
-    changed = False
-    new_schedule = {d: list(schedule.get(d) or []) for d in DAYS}
-    for (day, bucket), by_date in sorted(buckets.items()):
-        latest = sorted(by_date.values(), key=lambda a: a.at, reverse=True)[:5]
-        if len(latest) < AUTO_SCHEDULE_MIN_DAYS:
+def _find_pattern(
+    anchor: dict[str, Any], settled: list[dict[str, Any]], used: set[int]
+) -> tuple[list[str], list[dict[str, Any]]] | None:
+    """(days to change, changes that make the pattern) around ``anchor``, if any."""
+    anchor_date = datetime.fromisoformat(anchor["date"])
+    by_date: dict[str, dict[str, Any]] = {}
+    for item in settled:
+        if item["ids"][0] in used or item["off"] != anchor["off"]:
             continue
-        temps = [a.temperature for a in latest]
-        if max(temps) - min(temps) > AUTO_SCHEDULE_MAX_SPREAD_C:
-            continue  # no consistent setting to learn
-        avg_temp = round(sum(temps) / len(temps) * 2) / 2.0
-        if avg_temp <= eco_temp:
+        if abs(item["minute"] - anchor["minute"]) > AUTO_SCHEDULE_MATCH_MINUTES:
             continue
-        center = bucket * LEARNING_WINDOW_MINUTES + LEARNING_WINDOW_MINUTES // 2
+        if not anchor["off"] and abs(item["temp"] - anchor["temp"]) > AUTO_SCHEDULE_MAX_SPREAD_C:
+            continue
+        best = by_date.get(item["date"])
+        if best is None or abs(item["minute"] - anchor["minute"]) < abs(best["minute"] - anchor["minute"]):
+            by_date[item["date"]] = item
 
-        blocks = new_schedule[day]
-        spans = [
-            (i, *_block_span(raw))
-            for i, raw in enumerate(blocks)
-            if raw.get("enabled", True)
-        ]
-        near = [i for i, s, _e in spans if abs(s - center) <= LEARNING_WINDOW_MINUTES]
-        if near:
-            i = near[0]
-            if abs(float(blocks[i].get("temperature", 0)) - avg_temp) >= 0.25:
-                blocks[i] = {**blocks[i], "temperature": avg_temp}
-                changed = True
-            continue
-        if any(s <= c < e for _i, s, e in spans for c in (center, center + 24 * 60)):
-            continue
-        next_start = min(
-            [s for _i, s, _e in spans if s > center] + [24 * 60 - 1]
-        )
-        end = min(center + default_block_minutes, next_start)
-        if end - center < LEARNING_WINDOW_MINUTES:
-            continue
-        blocks.append(
-            ScheduleBlock(
-                start=_hhmm(center), end=_hhmm(end), temperature=avg_temp, enabled=True
-            ).to_dict()
-        )
-        blocks.sort(key=lambda b: _minutes(_parse_hhmm(b.get("start", "00:00"))))
-        changed = True
+    def recent(item: dict[str, Any], days: int) -> bool:
+        return abs((datetime.fromisoformat(item["date"]) - anchor_date).days) <= days
 
-    return new_schedule, changed
+    weekend = anchor["day"] in WEEKEND_DAYS
+    group = [
+        m for m in by_date.values()
+        if (m["day"] in WEEKEND_DAYS) == weekend and recent(m, AUTO_SCHEDULE_GROUP_DAYS)
+    ]
+    group_days = {m["day"] for m in group}
+    if weekend and group_days == set(WEEKEND_DAYS):
+        return list(WEEKEND_DAYS), group
+    if not weekend and len(group_days) >= AUTO_SCHEDULE_WEEKDAY_GROUP:
+        return list(WEEKDAYS), group
+    same_day = [m for m in by_date.values() if m["day"] == anchor["day"]]
+    if len(same_day) >= AUTO_SCHEDULE_MIN_DAYS:
+        return [anchor["day"]], same_day
+    return None
+
+
+def _apply_learned_change(
+    blocks: list[dict[str, Any]], minute: int, temp: float, eco_temp: float, *, off: bool
+) -> str | None:
+    """Change one day's blocks so ``temp`` starts at ``minute``; what changed, or None."""
+
+    def same(a: float, b: float) -> bool:
+        return abs(a - b) < 0.25
+
+    spans = [
+        (raw, *_block_span(raw)) for raw in blocks if raw.get("enabled", True)
+    ]
+    running = next((s for s in spans if s[1] <= minute < s[2]), None)
+    text: str | None = None
+    if running is not None:
+        raw, start, end = running
+        block_temp = float(raw.get("temperature", 0))
+        if off:
+            if minute - start < AUTO_SCHEDULE_MATCH_MINUTES:
+                blocks.remove(raw)
+                text = f"the {raw['start']}–{raw['end']} block is off (turned down soon after it started)"
+            else:
+                raw["end"] = _hhmm(minute)
+                text = f"the {raw['start']} block now ends at {_hhmm(minute)} (turned down then)"
+        elif same(block_temp, temp):
+            return None
+        elif minute - start <= AUTO_SCHEDULE_MATCH_MINUTES:
+            raw["temperature"] = temp
+            text = f"the {raw['start']} block is now {temp:g}°C"
+        elif end - minute < AUTO_SCHEDULE_MATCH_MINUTES:
+            return None  # too close to its end to be worth a block of its own
+        else:
+            old_end = raw["end"]
+            raw["end"] = _hhmm(minute)
+            blocks.append(ScheduleBlock(_hhmm(minute), old_end, temp).to_dict())
+            text = f"the {raw['start']} block changes to {temp:g}°C at {_hhmm(minute)}"
+    elif off:
+        return None  # already at Eco then
+    else:
+        later = [s for s in spans if s[1] > minute]
+        nxt = min(later, key=lambda s: s[1]) if later else None
+        earlier = [s for s in spans if s[2] <= minute]
+        prev = max(earlier, key=lambda s: s[2]) if earlier else None
+        limit = nxt[1] if nxt else 24 * 60 - 1
+        if nxt and nxt[1] - minute <= AUTO_SCHEDULE_NEAR_MINUTES and same(float(nxt[0].get("temperature", 0)), temp):
+            text = f"the {nxt[0]['start']} block now starts at {_hhmm(minute)}"
+            nxt[0]["start"] = _hhmm(minute)
+        elif prev and minute - prev[2] <= AUTO_SCHEDULE_NEAR_MINUTES and same(float(prev[0].get("temperature", 0)), temp):
+            new_end = min(minute + AUTO_SCHEDULE_NEW_BLOCK_MINUTES, limit)
+            prev[0]["end"] = _hhmm(new_end)
+            text = f"the {prev[0]['start']} block now runs until {_hhmm(new_end)}"
+        else:
+            new_end = min(minute + AUTO_SCHEDULE_NEW_BLOCK_MINUTES, limit)
+            if new_end - minute < AUTO_SCHEDULE_MATCH_MINUTES:
+                return None
+            blocks.append(ScheduleBlock(_hhmm(minute), _hhmm(new_end), temp).to_dict())
+            text = f"new {_hhmm(minute)}–{_hhmm(new_end)} block at {temp:g}°C"
+    blocks.sort(key=lambda b: _minutes(_parse_hhmm(b.get("start", "00:00"))))
+    _merge_touching_blocks(blocks)
+    return text
+
+
+def _merge_touching_blocks(blocks: list[dict[str, Any]]) -> None:
+    """Join enabled same-temperature blocks that meet or overlap (blocks sorted)."""
+    i = 0
+    while i < len(blocks) - 1:
+        a, b = blocks[i], blocks[i + 1]
+        a_start, a_end = _block_span(a)
+        b_start, b_end = _block_span(b)
+        if (
+            a.get("enabled", True)
+            and b.get("enabled", True)
+            and a_end < 24 * 60
+            and b_start <= a_end
+            and abs(float(a.get("temperature", 0)) - float(b.get("temperature", 0))) < 0.25
+        ):
+            if b_end > a_end:
+                a["end"] = b["end"]
+            blocks.pop(i + 1)
+        else:
+            i += 1
+
+
+def _round_quarter(minute: int) -> int:
+    return min(24 * 60 - 15, int(round(minute / 15.0)) * 15)
+
+
+def _days_label(days: list[str]) -> str:
+    if set(days) == set(WEEKDAYS):
+        return "Weekdays"
+    if set(days) == set(WEEKEND_DAYS):
+        return "Weekends"
+    return ", ".join(DAY_NAMES[d] for d in days)
 
 
 def presence_anyone_home(

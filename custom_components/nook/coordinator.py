@@ -1848,6 +1848,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not self.config.auto_schedule:
             return
         before = len(self.intel.state.adjustments)
+        logged = len(self.intel.state.schedule_log)
         new_schedule, changed = learn_schedule_from_adjustments(
             self.config.schedule,
             self.intel.state,
@@ -1855,10 +1856,20 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             eco_temp=self.config.eco_temp,
         )
         if len(self.intel.state.adjustments) != before:
-            self.intel.async_delay_save()  # old adjustments were forgotten
+            self.intel.async_delay_save()  # used or old adjustments were forgotten
         if changed:
-            _LOGGER.info("Auto-Schedule updated house weekly schedule from adjustments")
+            notes = [e["text"] for e in self.intel.state.schedule_log[logged:]]
+            _LOGGER.info("Nook Auto-Schedule changed the schedule: %s", "; ".join(notes))
             await self.async_save_config({"schedule": new_schedule})
+            await self.intel.async_save()
+            persistent_notification.async_create(
+                self.hass,
+                "\n".join(f"- {n}" for n in notes)
+                + "\n\nFrom changes you made by hand at about the same time on more than one day. "
+                "You can change or remove any block in Nook's Schedule — a block you remove stays removed.",
+                title="Nook Auto-Schedule changed your schedule",
+                notification_id=f"{DOMAIN}_auto_schedule",
+            )
 
     async def _async_update_data(self) -> dict[str, Any]:
         self._refresh_away()
@@ -2035,7 +2046,9 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._manual_hold["preheat_block"] = self._preheat.get("block_key")
         self._house_changed()
         self._persist_control()
-        record_manual_adjustment(self.intel.state, temperature)
+        if abs(temperature - before) >= 0.25:
+            # Setting what it was already heading for (e.g. during a preheat) says nothing.
+            record_manual_adjustment(self.intel.state, temperature)
         if temperature > self.config.eco_temp:
             # Turning down to save energy mustn't drag the comfort baseline down.
             note_comfort_setpoint(self.intel.state.leaf, temperature)
@@ -2049,6 +2062,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @callback
     def set_main_preset(self, preset: str) -> None:
+        before, _ = self.effective_main_target()
         self._main_preset = preset or PRESET_NONE
         if preset == PRESET_ECO:
             self._main_target = self.config.eco_temp
@@ -2059,6 +2073,12 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._manual_hold = None
         self._house_changed()
         self._persist_control()
+        if preset == PRESET_ECO and before - self.config.eco_temp >= 0.25:
+            # Picking Eco is a turn-down too, for Auto-Schedule (Away isn't: presence handles that).
+            record_manual_adjustment(self.intel.state, self.config.eco_temp)
+            self._dirty_intel = True
+            self.hass.async_create_task(self._after_manual_setpoint())
+            return
         self.hass.async_create_task(self.async_request_refresh())
 
     @callback
