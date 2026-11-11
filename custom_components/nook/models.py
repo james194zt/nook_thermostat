@@ -57,6 +57,9 @@ class RoomConfig:
     # dial, schedule and presets move it). False: its own target/eco temps.
     follow_house: bool = True
     house_offset: float = 0.0
+    # Never heat the room above this from the house, schedule or preheat (None: no
+    # limit). A change made on the room itself and Boost can still go higher.
+    max_temp: float | None = None
     # How long a change made on the room itself lasts (ROOM_HOLD_ENDS).
     hold_ends: str = "house_change"
     # Keep the TRV's own temperature offset at "room sensor − TRV" (needs a room sensor).
@@ -82,6 +85,11 @@ class RoomConfig:
             calls_for_heat=bool(data.get("calls_for_heat", True)),
             follow_house=bool(data.get("follow_house", True)),
             house_offset=max(-5.0, min(5.0, float(data.get("house_offset") or 0.0))),
+            max_temp=(
+                max(5.0, min(30.0, float(data["max_temp"])))
+                if data.get("max_temp") not in (None, "")
+                else None
+            ),
             hold_ends=(
                 data.get("hold_ends")
                 if data.get("hold_ends") in ROOM_HOLD_ENDS

@@ -302,6 +302,7 @@ class NookRoomClimate(CoordinatorEntity[NookCoordinator], ClimateEntity):
             "hold_ends": self.room.hold_ends,
             "follow_house": self.room.follow_house,
             "house_offset": self.room.house_offset,
+            "room_max_temp": self.room.max_temp,
             "needs_heat": bool(
                 self.coordinator.data.get("rooms", {})
                 .get(self.room.id, {})

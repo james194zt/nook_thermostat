@@ -1,9 +1,9 @@
 /**
  * Nook — HA sidebar panel.
  * Fox Plant–style shell + dial overview / schedule.
- * @version 0.7.8
+ * @version 0.7.9
  */
-const PANEL_VERSION = "0.7.8";
+const PANEL_VERSION = "0.7.9";
 
 /* —— Labels ——
    Every word the panel shows comes from a language file (www/i18n/<lang>.json, keys like
@@ -70,7 +70,7 @@ const DAY_LABELS = Object.fromEntries(DAYS.map((d) => [d, t(`day.${d}`)]));
 const DAY_SHORT = Object.fromEntries(DAYS.map((d) => [d, t(`day_short.${d}`)]));
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].map((m) => t(`month.${m}`));
 // New-room defaults (match RoomConfig / DEFAULT_TARGET_TEMP / DEFAULT_ECO_TEMP).
-const ROOM_TEMP_DEFAULTS = { follow_house: true, house_offset: 0, hold_ends: "house_change", target_temp: 20, eco_temp: 16 };
+const ROOM_TEMP_DEFAULTS = { follow_house: true, house_offset: 0, hold_ends: "house_change", target_temp: 20, eco_temp: 16, max_temp: null };
 // TRV Configuration: the HA domains a device setting can be, with the service + field
 // that sets it (switch and button have their own services).
 const TRV_CONFIG_DOMAINS = {
@@ -2368,6 +2368,7 @@ class NookPanel extends HTMLElement {
                   ? t("rooms.card.follows_offset", { offset: `${Number(r.house_offset) > 0 ? "+" : "−"}${formatTemp(Math.abs(Number(r.house_offset)))}` })
                   : t("rooms.card.follows"))
                 : t("rooms.card.own_temps")}</span>
+              ${r.max_temp != null ? `<span class="room-card-sensors">${t("rooms.card.max", { temp: this._escape(formatTemp(Number(r.max_temp))) })}</span>` : ""}
             </div>
             <div class="room-card-calls">
               <span>${t("rooms.card.calls_boiler")}</span>
@@ -2453,6 +2454,11 @@ class NookPanel extends HTMLElement {
             <div class="set-row-desc">${t("room_dlg.own_temps.desc")}</div>
           </div>
           <div class="set-field">
+            <div class="set-field-label">${t("room_dlg.max")}</div>
+            <div class="num-input"><input id="roomMax" type="number" step="0.5" min="5" max="30" placeholder="${this._escape(t("room_dlg.max.none"))}" value="${d.max_temp == null ? "" : this._escape(d.max_temp)}" /><span>°C</span></div>
+            <div class="set-row-desc">${t("room_dlg.max.desc")}</div>
+          </div>
+          <div class="set-field">
             <div class="set-field-label">${t("room_dlg.hold_ends")}</div>
             <select id="roomHoldEnds">
               ${["house_change", "block_change", "manual"]
@@ -2503,6 +2509,8 @@ class NookPanel extends HTMLElement {
       house_offset: numOr("roomOffset", d.house_offset, -5, 5),
       target_temp: numOr("roomComfort", d.target_temp, 5, 30),
       eco_temp: numOr("roomEco", d.eco_temp, 5, 30),
+      // Empty: no maximum.
+      max_temp: el("roomMax") ? numOr("roomMax", null, 5, 30) : d.max_temp,
       hold_ends: el("roomHoldEnds")?.value || d.hold_ends,
     };
   }
@@ -2537,6 +2545,7 @@ class NookPanel extends HTMLElement {
       hold_ends: room?.hold_ends || ROOM_TEMP_DEFAULTS.hold_ends,
       target_temp: room?.target_temp ?? ROOM_TEMP_DEFAULTS.target_temp,
       eco_temp: room?.eco_temp ?? ROOM_TEMP_DEFAULTS.eco_temp,
+      max_temp: room?.max_temp ?? null,
     };
     this._openDialog("room");
   }
@@ -4698,7 +4707,7 @@ class NookPanel extends HTMLElement {
       });
       this._bindTrvConfig();
       // Keep the draft current (the dialog can re-render) and swap offset ⇄ own temps.
-      ["roomFollowHouse", "roomOffset", "roomComfort", "roomEco", "roomHoldEnds"].forEach((id) => {
+      ["roomFollowHouse", "roomOffset", "roomComfort", "roomEco", "roomMax", "roomHoldEnds"].forEach((id) => {
         this.shadowRoot.getElementById(id)?.addEventListener("change", () => {
           Object.assign(this._roomDraft, this._readRoomTempFields());
           const follow = this._roomDraft.follow_house;

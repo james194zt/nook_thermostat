@@ -765,6 +765,8 @@ class PreheatRoom:
     # Follows the house: block temperature + this. None: its own target_temp.
     house_offset: float | None = 0.0
     target_temp: float = 0.0
+    # The room's maximum (None: no limit).
+    max_temp: float | None = None
 
 
 def preheat_status(
@@ -820,6 +822,8 @@ def preheat_status(
             if room.house_offset is not None
             else float(room.target_temp)
         )
+        if room.max_temp is not None:
+            room_target = min(room_target, room.max_temp)
         learned = room.warmup if room.warmup and room.warmup.samples >= ROOM_WARMUP_MIN_SAMPLES else None
         room_needed = estimate_preheat_minutes(
             current_temp=room.current_temp,

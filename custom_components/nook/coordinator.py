@@ -921,6 +921,10 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 # but turning down overnight mustn't cancel the morning warm-up.
                 # Turning down while that warm-up is already running does stop it.
                 self._house_comfort = True
+                if preheating:
+                    # Not preheating any more as far as anyone can see (11 Nov 2026:
+                    # turned down at 06:32, the pill still said "Preheating").
+                    self._preheat = {**status, "preheating": False, "overridden": True}
                 return hold, False
             if preheating:
                 self._house_comfort = True
@@ -962,6 +966,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     warmup=self.intel.state.room_warmup.get(room.id),
                     house_offset=room.house_offset if room.follow_house else None,
                     target_temp=room.target_temp,
+                    max_temp=room.max_temp,
                 )
             )
         return rooms
@@ -1127,13 +1132,15 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if preset == PRESET_BOOST:
             return room.boost_temp
         if preset == PRESET_ECO or self._away_eco_active:
-            return self._eco_target(room.eco_temp)
+            return self._room_capped(room, self._eco_target(room.eco_temp))
         if room.follow_house:
             hold = self._room_hold(room)
             if hold is not None:
                 return hold
             target = self._house_target + room.house_offset
-            return round(max(self.config.min_temp, min(self.config.max_temp, target)), 1)
+            return self._room_capped(
+                room, round(max(self.config.min_temp, min(self.config.max_temp, target)), 1)
+            )
         if not self.config.schedule_enabled:
             return float(st.get("target", room.target_temp))
         # Rooms follow the house schedule: own comfort temp while the house is
@@ -1142,8 +1149,14 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if hold is not None:
             return hold
         if self._house_comfort:
-            return float(room.target_temp)
-        return self._eco_target(room.eco_temp)
+            return self._room_capped(room, float(room.target_temp))
+        return self._room_capped(room, self._eco_target(room.eco_temp))
+
+    @staticmethod
+    def _room_capped(room: RoomConfig, target: float) -> float:
+        """The room's maximum, if it has one. 5 Nov 2026: holding the living room at
+        18 °C "as a maximum" kept it at 18 all night and ran the boiler at 3 am."""
+        return min(target, room.max_temp) if room.max_temp is not None else target
 
     def room_hold_until(self, room: RoomConfig) -> str | None:
         """When a manual room setpoint hands back (ISO), if one is in force and has a time."""
@@ -2041,7 +2054,7 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.config.schedule_enabled:
             # A dial change holds until the next schedule change.
             self._manual_hold = self._new_hold(temperature)
-            if (self._preheat or {}).get("preheating"):
+            if (self._preheat or {}).get("preheating") or (self._preheat or {}).get("overridden"):
                 # Set during a preheat: it beats that preheat (see _compute_main_target).
                 self._manual_hold["preheat_block"] = self._preheat.get("block_key")
         self._house_changed()
