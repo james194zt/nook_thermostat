@@ -67,6 +67,45 @@ async def test_sensor_list_shows_every_sensor_and_its_uses(hass):
         await coord.async_shutdown()
 
 
+async def test_replaced_sensor_leaves_faster_updates(hass):
+    """21 Nov 2026 live: the new kitchen sensor replaced the GW2000 everywhere, but the
+    GW2000 stayed on Faster updates with no tile left to switch it off."""
+    entry = MockConfigEntry(
+        domain="nook",
+        data={"heater": "switch.boiler", "temperature_sensor": "sensor.hall"},
+        options={
+            "backup_temperature_sensor": "sensor.gw",
+            "watch_temperature_sensors": ["sensor.bath"],
+            "fast_reporting_sensors": ["sensor.hall", "sensor.gw", "sensor.bath", "sensor.lounge"],
+            "rooms": [
+                {"id": "kitchen", "name": "Kitchen", "trv_entity": "climate.d", "temperature_sensor": "sensor.gw"},
+                {"id": "lr", "name": "Living Room", "trv_entity": "climate.a",
+                 "extra_temperature_sensors": ["sensor.lounge"]},
+            ],
+        },
+    )
+    entry.add_to_hass(hass)
+    coord = NookCoordinator(hass, entry)
+    await coord.async_initialize_intelligence()
+    try:
+        rooms = [r.to_dict() for r in coord.config.rooms]
+        rooms[0]["temperature_sensor"] = "sensor.kitchen"
+        await coord.async_save_config({"rooms": rooms})
+        # Still the backup: kept.
+        assert coord.config.fast_reporting_sensors == ["sensor.hall", "sensor.gw", "sensor.bath", "sensor.lounge"]
+        await coord.async_save_config({"backup_temperature_sensor": "sensor.kitchen"})
+        assert coord.config.fast_reporting_sensors == ["sensor.hall", "sensor.bath", "sensor.lounge"]
+        assert entry.options["fast_reporting_sensors"] == ["sensor.hall", "sensor.bath", "sensor.lounge"]
+        # Switching Faster updates on for a sensor in use still works.
+        await coord.async_save_config({"fast_reporting_sensors": ["sensor.hall", "sensor.bath", "sensor.lounge", "sensor.kitchen"]})
+        assert "sensor.kitchen" in coord.config.fast_reporting_sensors
+        await coord.async_save_config({"watch_temperature_sensors": []})
+        assert "sensor.bath" not in coord.config.fast_reporting_sensors
+    finally:
+        await coord.async_unload()
+        await coord.async_shutdown()
+
+
 async def test_missed_recheck_of_an_applied_sensor_is_not_an_error(hass, monkeypatch):
     """23 Oct live: the living room SNZB-02P had Faster updates (0.1 °C every ~5 min), but
     slept through the post-restart re-check and the card showed it as not set."""

@@ -344,6 +344,11 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._async_switch_heater(old_heater, False)
         current = {**self.entry.data, **self.entry.options}
         merged = {**current, **updates}
+        if merged.get("fast_reporting_sensors"):
+            # A sensor Nook stopped using has no tile left to switch Faster updates
+            # off (21 Nov 2026: the GW2000 after the new kitchen sensor replaced it).
+            in_use = self._sensors_in_use(NookConfig.from_entry_data(merged))
+            merged["fast_reporting_sensors"] = [e for e in merged["fast_reporting_sensors"] if e in in_use]
         data_keys = {"heater", "temperature_sensor"}
         new_data = {k: merged[k] for k in data_keys if k in merged}
         new_options = {k: v for k, v in merged.items() if k not in data_keys}
@@ -1178,8 +1183,17 @@ class NookCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """A room that follows the house is off while the house is off."""
         return room.follow_house and self._main_hvac_mode != "heat"
 
-    def _room_sensor_ids(self, room: RoomConfig) -> list[str]:
+    @staticmethod
+    def _room_sensor_ids(room: RoomConfig) -> list[str]:
         return [e for e in [room.temperature_sensor, *(room.extra_temperature_sensors or [])] if e]
+
+    @classmethod
+    def _sensors_in_use(cls, config: NookConfig) -> set[str]:
+        """Every temperature sensor with a tile in Settings → Temperature Sensors."""
+        used = {config.temperature_sensor, config.backup_temperature_sensor, *config.watch_temperature_sensors}
+        for room in config.rooms:
+            used.update(cls._room_sensor_ids(room))
+        return {e for e in used if e}
 
     def room_current_temp(self, room: RoomConfig) -> float | None:
         readings = [t for e in self._room_sensor_ids(room) if (t := self._state_float(e)) is not None]
